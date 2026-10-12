@@ -1,0 +1,33 @@
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Local deployment configuration
+.fastapicloud/
+backend/.fastapicloud/
+
+# Python cache and virtual environments
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+coverage.json
+htmlcov/
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+
+# Local vector database
+backend/chroma_db/
+
+# Logs and generated archives
+*.log
+*.zip
