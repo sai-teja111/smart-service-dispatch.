@@ -1,10 +1,14 @@
-
 import json
 from functools import lru_cache
 from pathlib import Path
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    NoDecode,
+)
+from typing import Annotated
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,19 +21,13 @@ class Settings(BaseSettings):
     app_name: str = "Smart Service Dispatch System"
     debug: bool = False
 
-    database_url: str = Field(
-        validation_alias="DATABASE_URL",
-    )
-
-    secret_key: str = Field(
-        validation_alias="JWT_SECRET_KEY",
-    )
-
+    database_url: str = Field(validation_alias="DATABASE_URL")
+    secret_key: str = Field(validation_alias="JWT_SECRET_KEY")
     openrouter_api_key: str = Field(
-        validation_alias="OPENROUTER_API_KEY",
+        validation_alias="OPENROUTER_API_KEY"
     )
 
-    cors_origins: list[str] = Field(
+    cors_origins: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: [
             "http://localhost:5173",
             "http://127.0.0.1:5173",
@@ -42,12 +40,6 @@ class Settings(BaseSettings):
     def parse_cors_origins(cls, value):
         """Accept a JSON array or comma-separated origin list."""
 
-        if value is None:
-            return [
-                "http://localhost:5173",
-                "http://127.0.0.1:5173",
-            ]
-
         if isinstance(value, str):
             value = value.strip()
 
@@ -55,20 +47,15 @@ class Settings(BaseSettings):
                 return []
 
             if value.startswith("["):
-                value = json.loads(value)
-            else:
-                value = value.split(",")
+                return json.loads(value)
 
-        if not isinstance(value, list):
-            raise ValueError(
-                "CORS_ORIGINS must be a JSON array or comma-separated string."
-            )
+            return [
+                origin.strip()
+                for origin in value.split(",")
+                if origin.strip()
+            ]
 
-        return [
-            origin.strip().rstrip("/")
-            for origin in value
-            if isinstance(origin, str) and origin.strip()
-        ]
+        return value
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
@@ -80,5 +67,5 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Create and cache the settings object."""
+    """Create and cache application settings."""
     return Settings()
