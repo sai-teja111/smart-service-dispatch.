@@ -1,4 +1,5 @@
 
+import json
 from functools import lru_cache
 from pathlib import Path
 
@@ -40,13 +41,34 @@ class Settings(BaseSettings):
     @classmethod
     def parse_cors_origins(cls, value):
         """Accept a JSON array or comma-separated origin list."""
-        if isinstance(value, str) and not value.lstrip().startswith("["):
+
+        if value is None:
             return [
-                origin.strip()
-                for origin in value.split(",")
-                if origin.strip()
+                "http://localhost:5173",
+                "http://127.0.0.1:5173",
             ]
-        return value
+
+        if isinstance(value, str):
+            value = value.strip()
+
+            if not value:
+                return []
+
+            if value.startswith("["):
+                value = json.loads(value)
+            else:
+                value = value.split(",")
+
+        if not isinstance(value, list):
+            raise ValueError(
+                "CORS_ORIGINS must be a JSON array or comma-separated string."
+            )
+
+        return [
+            origin.strip().rstrip("/")
+            for origin in value
+            if isinstance(origin, str) and origin.strip()
+        ]
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
