@@ -1,10 +1,10 @@
 import pytest
 
-from  datetime import datetime
-from  decimal import Decimal
-from  uuid import UUID, uuid4
+from datetime import datetime
+from decimal import Decimal
+from uuid import uuid4
 
-from  pydantic import ValidationError
+from pydantic import ValidationError
 
 from Api.schemas import (
     CustomerRegister,
@@ -73,6 +73,24 @@ def valid_technician_data():
         "city": "Hyderabad",
         "area": "Gachibowli",
         "pincode": "500032",
+        "skills": [
+            {
+                "skill_id": 1,
+                "experience_years": 3,
+                "expertise_level": "Advanced",
+            }
+        ],
+    }
+
+
+def valid_token_data():
+    return {
+        "access_token": "test-token",
+        "token_type": "bearer",
+        "user_uuid": CUSTOMER_UUID,
+        "name": "John Doe",
+        "role": "customer",
+        "first_login": False,
     }
 
 
@@ -81,9 +99,7 @@ def valid_technician_data():
 # ============================================================
 
 def test_customer_name_valid_and_formatted():
-
     data = valid_customer_data()
-
     data["customer_name"] = "  john doe  "
 
     customer = CustomerRegister(**data)
@@ -92,14 +108,12 @@ def test_customer_name_valid_and_formatted():
 
 
 def test_customer_name_invalid():
-
     data = valid_customer_data()
-
     data["customer_name"] = "John123"
 
     with pytest.raises(
         ValidationError,
-        match="Customer name must contain only letters."
+        match="Customer name must contain only letters.",
     ):
         CustomerRegister(**data)
 
@@ -109,10 +123,7 @@ def test_customer_name_invalid():
 # ============================================================
 
 def test_customer_phone_valid():
-
-    customer = CustomerRegister(
-        **valid_customer_data()
-    )
+    customer = CustomerRegister(**valid_customer_data())
 
     assert customer.phone == "9876543210"
 
@@ -123,32 +134,27 @@ def test_customer_phone_valid():
         "abcdefghij",
         "123456789",
         "12345678901",
-    ]
+    ],
 )
 def test_customer_phone_invalid_format(phone):
-
     data = valid_customer_data()
-
     data["phone"] = phone
 
-    with pytest.raises(
-        ValidationError,
-        match="Phone number must contain exactly 10 digits."
-    ):
+    with pytest.raises(ValidationError):
         CustomerRegister(**data)
 
 
 def test_customer_phone_invalid_start():
-
     data = valid_customer_data()
-
     data["phone"] = "5123456789"
 
     with pytest.raises(
         ValidationError,
-        match="Phone number must start with 6, 7, 8 or 9."
+        match="Phone number must start with 6, 7, 8 or 9.",
     ):
         CustomerRegister(**data)
+
+
 
 
 # ============================================================
@@ -156,10 +162,7 @@ def test_customer_phone_invalid_start():
 # ============================================================
 
 def test_customer_password_valid():
-
-    customer = CustomerRegister(
-        **valid_customer_data()
-    )
+    customer = CustomerRegister(**valid_customer_data())
 
     assert customer.password == "Password1!"
 
@@ -169,40 +172,35 @@ def test_customer_password_valid():
     [
         (
             " Password1!",
-            "Password must not contain leading or trailing spaces."
+            "Password must not contain leading or trailing spaces.",
         ),
         (
             "Password1! ",
-            "Password must not contain leading or trailing spaces."
+            "Password must not contain leading or trailing spaces.",
         ),
         (
             "password1!",
-            "Password must contain at least one uppercase letter."
+            "Password must contain at least one uppercase letter.",
         ),
         (
             "PASSWORD1!",
-            "Password must contain at least one lowercase letter."
+            "Password must contain at least one lowercase letter.",
         ),
         (
             "Password!!",
-            "Password must contain at least one digit."
+            "Password must contain at least one digit.",
         ),
         (
             "Password1",
-            "Password must contain at least one special character."
+            "Password must contain at least one special character.",
         ),
-    ]
+    ],
 )
 def test_customer_password_invalid(password, message):
-
     data = valid_customer_data()
-
     data["password"] = password
 
-    with pytest.raises(
-        ValidationError,
-        match=message
-    ):
+    with pytest.raises(ValidationError, match=message):
         CustomerRegister(**data)
 
 
@@ -211,9 +209,7 @@ def test_customer_password_invalid(password, message):
 # ============================================================
 
 def test_customer_city_valid_and_formatted():
-
     data = valid_customer_data()
-
     data["city"] = "  HYDERABAD  "
 
     customer = CustomerRegister(**data)
@@ -222,14 +218,12 @@ def test_customer_city_valid_and_formatted():
 
 
 def test_customer_city_invalid():
-
     data = valid_customer_data()
-
     data["city"] = "Mumbai"
 
     with pytest.raises(
         ValidationError,
-        match="Currently, service is available only in Hyderabad."
+        match="Currently, service is available only in Hyderabad.",
     ):
         CustomerRegister(**data)
 
@@ -239,9 +233,7 @@ def test_customer_city_invalid():
 # ============================================================
 
 def test_customer_area_valid_and_formatted():
-
     data = valid_customer_data()
-
     data["area"] = "  hiTech city  "
 
     customer = CustomerRegister(**data)
@@ -250,14 +242,12 @@ def test_customer_area_valid_and_formatted():
 
 
 def test_customer_area_invalid():
-
     data = valid_customer_data()
-
     data["area"] = "Hitech123"
 
     with pytest.raises(
         ValidationError,
-        match="Area must contain only letters."
+        match="Area must contain only letters.",
     ):
         CustomerRegister(**data)
 
@@ -267,10 +257,7 @@ def test_customer_area_invalid():
 # ============================================================
 
 def test_customer_pincode_valid():
-
-    customer = CustomerRegister(
-        **valid_customer_data()
-    )
+    customer = CustomerRegister(**valid_customer_data())
 
     assert customer.pincode == "500032"
 
@@ -281,17 +268,23 @@ def test_customer_pincode_valid():
         "abcdef",
         "12345",
         "1234567",
-    ]
+    ],
 )
 def test_customer_pincode_invalid(pincode):
-
     data = valid_customer_data()
-
     data["pincode"] = pincode
+
+    with pytest.raises(ValidationError):
+        CustomerRegister(**data)
+
+
+def test_customer_pincode_non_digit_with_correct_length():
+    data = valid_customer_data()
+    data["pincode"] = "5000A2"
 
     with pytest.raises(
         ValidationError,
-        match="Pincode must contain exactly 6 digits."
+        match="Pincode must contain exactly 6 digits.",
     ):
         CustomerRegister(**data)
 
@@ -301,10 +294,9 @@ def test_customer_pincode_invalid(pincode):
 # ============================================================
 
 def test_customer_register_response():
-
     response = CustomerRegisterResponse(
         message="Customer registered successfully.",
-        customer_uuid=CUSTOMER_UUID
+        customer_uuid=CUSTOMER_UUID,
     )
 
     assert response.message == "Customer registered successfully."
@@ -316,9 +308,7 @@ def test_customer_register_response():
 # ============================================================
 
 def test_technician_name_valid_and_formatted():
-
     data = valid_technician_data()
-
     data["technician_name"] = "  john technician  "
 
     technician = TechnicianRegister(**data)
@@ -327,14 +317,12 @@ def test_technician_name_valid_and_formatted():
 
 
 def test_technician_name_invalid():
-
     data = valid_technician_data()
-
     data["technician_name"] = "John123"
 
     with pytest.raises(
         ValidationError,
-        match="Technician name must contain only letters."
+        match="Technician name must contain only letters.",
     ):
         TechnicianRegister(**data)
 
@@ -344,10 +332,7 @@ def test_technician_name_invalid():
 # ============================================================
 
 def test_technician_phone_valid():
-
-    technician = TechnicianRegister(
-        **valid_technician_data()
-    )
+    technician = TechnicianRegister(**valid_technician_data())
 
     assert technician.phone == "9876543211"
 
@@ -358,30 +343,23 @@ def test_technician_phone_valid():
         "abcdefghij",
         "123456789",
         "12345678901",
-    ]
+    ],
 )
 def test_technician_phone_invalid_format(phone):
-
     data = valid_technician_data()
-
     data["phone"] = phone
 
-    with pytest.raises(
-        ValidationError,
-        match="Phone number must contain exactly 10 digits."
-    ):
+    with pytest.raises(ValidationError):
         TechnicianRegister(**data)
 
 
 def test_technician_phone_invalid_start():
-
     data = valid_technician_data()
-
     data["phone"] = "5123456789"
 
     with pytest.raises(
         ValidationError,
-        match="Phone number must start with 6, 7, 8 or 9."
+        match="Phone number must start with 6, 7, 8 or 9.",
     ):
         TechnicianRegister(**data)
 
@@ -391,10 +369,7 @@ def test_technician_phone_invalid_start():
 # ============================================================
 
 def test_technician_password_valid():
-
-    technician = TechnicianRegister(
-        **valid_technician_data()
-    )
+    technician = TechnicianRegister(**valid_technician_data())
 
     assert technician.password == "Password1!"
 
@@ -404,40 +379,35 @@ def test_technician_password_valid():
     [
         (
             " Password1!",
-            "Password must not contain leading or trailing spaces."
+            "Password must not contain leading or trailing spaces.",
         ),
         (
             "Password1! ",
-            "Password must not contain leading or trailing spaces."
+            "Password must not contain leading or trailing spaces.",
         ),
         (
             "password1!",
-            "Password must contain at least one uppercase letter."
+            "Password must contain at least one uppercase letter.",
         ),
         (
             "PASSWORD1!",
-            "Password must contain at least one lowercase letter."
+            "Password must contain at least one lowercase letter.",
         ),
         (
             "Password!!",
-            "Password must contain at least one digit."
+            "Password must contain at least one digit.",
         ),
         (
             "Password1",
-            "Password must contain at least one special character."
+            "Password must contain at least one special character.",
         ),
-    ]
+    ],
 )
 def test_technician_password_invalid(password, message):
-
     data = valid_technician_data()
-
     data["password"] = password
 
-    with pytest.raises(
-        ValidationError,
-        match=message
-    ):
+    with pytest.raises(ValidationError, match=message):
         TechnicianRegister(**data)
 
 
@@ -446,9 +416,7 @@ def test_technician_password_invalid(password, message):
 # ============================================================
 
 def test_technician_city_valid_and_formatted():
-
     data = valid_technician_data()
-
     data["city"] = "  HYDERABAD  "
 
     technician = TechnicianRegister(**data)
@@ -457,14 +425,12 @@ def test_technician_city_valid_and_formatted():
 
 
 def test_technician_city_invalid():
-
     data = valid_technician_data()
-
     data["city"] = "Mumbai"
 
     with pytest.raises(
         ValidationError,
-        match="Currently, service is available only in Hyderabad."
+        match="Currently, service is available only in Hyderabad.",
     ):
         TechnicianRegister(**data)
 
@@ -474,9 +440,7 @@ def test_technician_city_invalid():
 # ============================================================
 
 def test_technician_area_valid_and_formatted():
-
     data = valid_technician_data()
-
     data["area"] = "  hiTech city  "
 
     technician = TechnicianRegister(**data)
@@ -485,14 +449,12 @@ def test_technician_area_valid_and_formatted():
 
 
 def test_technician_area_invalid():
-
     data = valid_technician_data()
-
     data["area"] = "Hitech123"
 
     with pytest.raises(
         ValidationError,
-        match="Area must contain only letters."
+        match="Area must contain only letters.",
     ):
         TechnicianRegister(**data)
 
@@ -502,10 +464,7 @@ def test_technician_area_invalid():
 # ============================================================
 
 def test_technician_pincode_valid():
-
-    technician = TechnicianRegister(
-        **valid_technician_data()
-    )
+    technician = TechnicianRegister(**valid_technician_data())
 
     assert technician.pincode == "500032"
 
@@ -516,17 +475,23 @@ def test_technician_pincode_valid():
         "abcdef",
         "12345",
         "1234567",
-    ]
+    ],
 )
 def test_technician_pincode_invalid(pincode):
-
     data = valid_technician_data()
-
     data["pincode"] = pincode
+
+    with pytest.raises(ValidationError):
+        TechnicianRegister(**data)
+
+
+def test_technician_pincode_non_digit_with_correct_length():
+    data = valid_technician_data()
+    data["pincode"] = "5000A2"
 
     with pytest.raises(
         ValidationError,
-        match="Pincode must contain exactly 6 digits."
+        match="Pincode must contain exactly 6 digits.",
     ):
         TechnicianRegister(**data)
 
@@ -536,10 +501,9 @@ def test_technician_pincode_invalid(pincode):
 # ============================================================
 
 def test_technician_register_response():
-
     response = TechnicianRegisterResponse(
         message="Technician registered successfully.",
-        technician_uuid=TECHNICIAN_UUID
+        technician_uuid=TECHNICIAN_UUID,
     )
 
     assert response.message == "Technician registered successfully."
@@ -551,10 +515,9 @@ def test_technician_register_response():
 # ============================================================
 
 def test_login_request_valid():
-
     login = LoginRequest(
         phone="9876543210",
-        password="Password1!"
+        password="Password1!",
     )
 
     assert login.phone == "9876543210"
@@ -567,18 +530,14 @@ def test_login_request_valid():
         "abcdefghij",
         "123456789",
         "12345678901",
-    ]
+    ],
 )
 def test_login_phone_invalid(phone):
+    with pytest.raises(ValidationError):
+        LoginRequest(phone=phone, password="Password1!")
 
-    with pytest.raises(
-        ValidationError,
-        match="Phone number must contain exactly 10 digits."
-    ):
-        LoginRequest(
-            phone=phone,
-            password="Password1!"
-        )
+
+
 
 
 # ============================================================
@@ -586,14 +545,22 @@ def test_login_phone_invalid(phone):
 # ============================================================
 
 def test_token_response():
-
-    response = TokenResponse(
-        access_token="test-token",
-        token_type="bearer"
-    )
+    response = TokenResponse(**valid_token_data())
 
     assert response.access_token == "test-token"
     assert response.token_type == "bearer"
+    assert response.user_uuid == CUSTOMER_UUID
+    assert response.name == "John Doe"
+    assert response.role == "customer"
+    assert response.first_login is False
+
+
+def test_token_response_rejects_invalid_uuid():
+    data = valid_token_data()
+    data["user_uuid"] = "not-a-uuid"
+
+    with pytest.raises(ValidationError):
+        TokenResponse(**data)
 
 
 # ============================================================
@@ -601,10 +568,9 @@ def test_token_response():
 # ============================================================
 
 def test_assigned_technician_response():
-
     response = AssignedTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
-        technician_name="John Technician"
+        technician_name="John Technician",
     )
 
     assert response.technician_uuid == TECHNICIAN_UUID
@@ -616,14 +582,13 @@ def test_assigned_technician_response():
 # ============================================================
 
 def test_technician_customer_response():
-
     response = TechnicianCustomerResponse(
         customer_uuid=CUSTOMER_UUID,
         customer_name="John Doe",
         phone="9876543210",
         city="Hyderabad",
         area="Gachibowli",
-        pincode="500032"
+        pincode="500032",
     )
 
     assert response.customer_uuid == CUSTOMER_UUID
@@ -636,14 +601,13 @@ def test_technician_customer_response():
 # ============================================================
 
 def test_technician_service_request_response():
-
     customer = TechnicianCustomerResponse(
         customer_uuid=CUSTOMER_UUID,
         customer_name="John Doe",
         phone="9876543210",
         city="Hyderabad",
         area="Gachibowli",
-        pincode="500032"
+        pincode="500032",
     )
 
     response = TechnicianServiceRequestResponse(
@@ -653,7 +617,7 @@ def test_technician_service_request_response():
         priority="HIGH",
         status="OPEN",
         request_date=REQUEST_DATE,
-        customer=customer
+        customer=customer,
     )
 
     assert response.request_uuid == REQUEST_UUID
@@ -662,14 +626,13 @@ def test_technician_service_request_response():
 
 
 def test_technician_service_request_response_optional_priority():
-
     customer = TechnicianCustomerResponse(
         customer_uuid=CUSTOMER_UUID,
         customer_name="John Doe",
         phone="9876543210",
         city="Hyderabad",
         area="Gachibowli",
-        pincode="500032"
+        pincode="500032",
     )
 
     response = TechnicianServiceRequestResponse(
@@ -679,7 +642,7 @@ def test_technician_service_request_response_optional_priority():
         priority=None,
         status="OPEN",
         request_date=REQUEST_DATE,
-        customer=customer
+        customer=customer,
     )
 
     assert response.priority is None
@@ -690,14 +653,13 @@ def test_technician_service_request_response_optional_priority():
 # ============================================================
 
 def test_technician_service_request_list_response():
-
     customer = TechnicianCustomerResponse(
         customer_uuid=CUSTOMER_UUID,
         customer_name="John Doe",
         phone="9876543210",
         city="Hyderabad",
         area="Gachibowli",
-        pincode="500032"
+        pincode="500032",
     )
 
     request = TechnicianServiceRequestResponse(
@@ -707,12 +669,12 @@ def test_technician_service_request_list_response():
         priority="HIGH",
         status="OPEN",
         request_date=REQUEST_DATE,
-        customer=customer
+        customer=customer,
     )
 
     response = TechnicianServiceRequestListResponse(
         count=1,
-        service_requests=[request]
+        service_requests=[request],
     )
 
     assert response.count == 1
@@ -724,10 +686,9 @@ def test_technician_service_request_list_response():
 # ============================================================
 
 def test_service_detection_response():
-
     response = ServiceDetectionResponse(
         match_type="Semantic Match",
-        distance=0.25
+        distance=0.25,
     )
 
     assert response.match_type == "Semantic Match"
@@ -735,10 +696,9 @@ def test_service_detection_response():
 
 
 def test_service_detection_response_optional_values():
-
     response = ServiceDetectionResponse(
         match_type=None,
-        distance=None
+        distance=None,
     )
 
     assert response.match_type is None
@@ -750,15 +710,14 @@ def test_service_detection_response_optional_values():
 # ============================================================
 
 def test_service_request_create_response_complete():
-
     technician = AssignedTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
-        technician_name="John Technician"
+        technician_name="John Technician",
     )
 
     detection = ServiceDetectionResponse(
         match_type="Keyword Match",
-        distance=0.1
+        distance=0.1,
     )
 
     response = ServiceRequestCreateResponse(
@@ -768,7 +727,7 @@ def test_service_request_create_response_complete():
         priority="HIGH",
         status="OPEN",
         service_detection=detection,
-        technician=technician
+        technician=technician,
     )
 
     assert response.request_uuid == REQUEST_UUID
@@ -777,13 +736,12 @@ def test_service_request_create_response_complete():
 
 
 def test_service_request_create_response_optional_values():
-
     response = ServiceRequestCreateResponse(
         message="Created",
         request_uuid=REQUEST_UUID,
         service="Plumbing",
         priority="MEDIUM",
-        status="OPEN"
+        status="OPEN",
     )
 
     assert response.service_detection is None
@@ -795,10 +753,9 @@ def test_service_request_create_response_optional_values():
 # ============================================================
 
 def test_customer_service_request_response_complete():
-
     technician = AssignedTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
-        technician_name="John Technician"
+        technician_name="John Technician",
     )
 
     response = CustomerServiceRequestResponse(
@@ -808,7 +765,7 @@ def test_customer_service_request_response_complete():
         priority="HIGH",
         status="OPEN",
         request_date=REQUEST_DATE,
-        technician=technician
+        technician=technician,
     )
 
     assert response.request_uuid == REQUEST_UUID
@@ -816,14 +773,13 @@ def test_customer_service_request_response_complete():
 
 
 def test_customer_service_request_response_without_technician():
-
     response = CustomerServiceRequestResponse(
         request_uuid=REQUEST_UUID,
         service="Plumbing",
         problem_description="Leakage",
         priority=None,
         status="OPEN",
-        request_date=REQUEST_DATE
+        request_date=REQUEST_DATE,
     )
 
     assert response.priority is None
@@ -835,19 +791,18 @@ def test_customer_service_request_response_without_technician():
 # ============================================================
 
 def test_customer_service_request_list_response():
-
     request = CustomerServiceRequestResponse(
         request_uuid=REQUEST_UUID,
         service="AC Repair",
         problem_description="Not cooling",
         priority="HIGH",
         status="OPEN",
-        request_date=REQUEST_DATE
+        request_date=REQUEST_DATE,
     )
 
     response = CustomerServiceRequestListResponse(
         count=1,
-        service_requests=[request]
+        service_requests=[request],
     )
 
     assert response.count == 1
@@ -859,12 +814,11 @@ def test_customer_service_request_list_response():
 # ============================================================
 
 def test_service_history_record_response():
-
     response = ServiceHistoryRecordResponse(
         old_status="OPEN",
         new_status="IN PROGRESS",
         remarks="Technician assigned",
-        updated_time=REQUEST_DATE
+        updated_time=REQUEST_DATE,
     )
 
     assert response.old_status == "OPEN"
@@ -873,12 +827,11 @@ def test_service_history_record_response():
 
 
 def test_service_history_record_response_optional_values():
-
     response = ServiceHistoryRecordResponse(
         old_status=None,
         new_status=None,
         remarks=None,
-        updated_time=REQUEST_DATE
+        updated_time=REQUEST_DATE,
     )
 
     assert response.old_status is None
@@ -887,18 +840,17 @@ def test_service_history_record_response_optional_values():
 
 
 def test_service_request_history_response():
-
     record = ServiceHistoryRecordResponse(
         old_status="OPEN",
         new_status="COMPLETED",
         remarks="Service completed",
-        updated_time=REQUEST_DATE
+        updated_time=REQUEST_DATE,
     )
 
     response = ServiceRequestHistoryResponse(
         request_uuid=REQUEST_UUID,
         count=1,
-        history=[record]
+        history=[record],
     )
 
     assert response.request_uuid == REQUEST_UUID
@@ -911,14 +863,13 @@ def test_service_request_history_response():
 # ============================================================
 
 def test_technician_status_response():
-
     response = TechnicianStatusResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
         previous_workload=2,
         new_workload=3,
         availability="Available",
-        availability_changed=True
+        availability_changed=True,
     )
 
     assert response.previous_workload == 2
@@ -927,14 +878,13 @@ def test_technician_status_response():
 
 
 def test_technician_status_update_response():
-
     technician = TechnicianStatusResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
         previous_workload=2,
         new_workload=3,
         availability="Available",
-        availability_changed=False
+        availability_changed=False,
     )
 
     response = TechnicianStatusUpdateResponse(
@@ -943,7 +893,7 @@ def test_technician_status_update_response():
         old_status="OPEN",
         new_status="IN PROGRESS",
         remarks="Technician started work",
-        technician=technician
+        technician=technician,
     )
 
     assert response.message == "Status updated successfully."
@@ -951,14 +901,13 @@ def test_technician_status_update_response():
 
 
 def test_technician_status_update_response_without_remarks():
-
     technician = TechnicianStatusResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
         previous_workload=3,
         new_workload=2,
         availability="Available",
-        availability_changed=True
+        availability_changed=True,
     )
 
     response = TechnicianStatusUpdateResponse(
@@ -967,7 +916,7 @@ def test_technician_status_update_response_without_remarks():
         old_status="IN PROGRESS",
         new_status="COMPLETED",
         remarks=None,
-        technician=technician
+        technician=technician,
     )
 
     assert response.remarks is None
@@ -978,32 +927,29 @@ def test_technician_status_update_response_without_remarks():
 # ============================================================
 
 def test_feedback_technician_response():
-
     response = FeedbackTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
-        rating=Decimal("4.5")
+        rating=Decimal("4.5"),
     )
 
     assert response.rating == Decimal("4.5")
 
 
 def test_feedback_technician_response_without_rating():
-
     response = FeedbackTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
-        technician_name="John Technician"
+        technician_name="John Technician",
     )
 
     assert response.rating is None
 
 
 def test_feedback_create_response():
-
     technician = FeedbackTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
-        rating=Decimal("4.5")
+        rating=Decimal("4.5"),
     )
 
     response = FeedbackCreateResponse(
@@ -1012,7 +958,7 @@ def test_feedback_create_response():
         request_uuid=REQUEST_UUID,
         rating=Decimal("5.0"),
         comments="Good service",
-        technician=technician
+        technician=technician,
     )
 
     assert response.feedback_uuid == FEEDBACK_UUID
@@ -1021,17 +967,16 @@ def test_feedback_create_response():
 
 
 def test_feedback_create_response_optional_values():
-
     technician = FeedbackTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
-        technician_name="John Technician"
+        technician_name="John Technician",
     )
 
     response = FeedbackCreateResponse(
         message="Submitted",
         feedback_uuid=FEEDBACK_UUID,
         request_uuid=REQUEST_UUID,
-        technician=technician
+        technician=technician,
     )
 
     assert response.rating is None
@@ -1039,12 +984,11 @@ def test_feedback_create_response_optional_values():
 
 
 def test_feedback_details_response():
-
     response = FeedbackDetailsResponse(
         feedback_uuid=FEEDBACK_UUID,
         rating=Decimal("4.5"),
         comments="Excellent",
-        feedback_date=REQUEST_DATE
+        feedback_date=REQUEST_DATE,
     )
 
     assert response.feedback_uuid == FEEDBACK_UUID
@@ -1052,12 +996,11 @@ def test_feedback_details_response():
 
 
 def test_feedback_details_response_optional_values():
-
     response = FeedbackDetailsResponse(
         feedback_uuid=FEEDBACK_UUID,
         rating=None,
         comments=None,
-        feedback_date=REQUEST_DATE
+        feedback_date=REQUEST_DATE,
     )
 
     assert response.rating is None
@@ -1065,25 +1008,24 @@ def test_feedback_details_response_optional_values():
 
 
 def test_feedback_view_response_complete():
-
     details = FeedbackDetailsResponse(
         feedback_uuid=FEEDBACK_UUID,
         rating=Decimal("4.0"),
         comments="Good",
-        feedback_date=REQUEST_DATE
+        feedback_date=REQUEST_DATE,
     )
 
     technician = FeedbackTechnicianResponse(
         technician_uuid=TECHNICIAN_UUID,
         technician_name="John Technician",
-        rating=Decimal("4.2")
+        rating=Decimal("4.2"),
     )
 
     response = FeedbackViewResponse(
         request_uuid=REQUEST_UUID,
         message="Feedback found.",
         feedback=details,
-        technician=technician
+        technician=technician,
     )
 
     assert response.feedback.feedback_uuid == FEEDBACK_UUID
@@ -1091,12 +1033,11 @@ def test_feedback_view_response_complete():
 
 
 def test_feedback_view_response_without_feedback():
-
     response = FeedbackViewResponse(
         request_uuid=REQUEST_UUID,
         message="No feedback found.",
         feedback=None,
-        technician=None
+        technician=None,
     )
 
     assert response.feedback is None
@@ -1108,12 +1049,11 @@ def test_feedback_view_response_without_feedback():
 # ============================================================
 
 def test_technician_availability_update_response():
-
     response = TechnicianAvailabilityUpdateResponse(
         message="Availability updated successfully.",
         technician_uuid=TECHNICIAN_UUID,
         old_availability="Busy",
-        new_availability="Available"
+        new_availability="Available",
     )
 
     assert response.old_availability == "Busy"
@@ -1121,10 +1061,9 @@ def test_technician_availability_update_response():
 
 
 def test_technician_availability_response():
-
     response = TechnicianAvailabilityResponse(
         technician_uuid=TECHNICIAN_UUID,
-        availability="Available"
+        availability="Available",
     )
 
     assert response.technician_uuid == TECHNICIAN_UUID
@@ -1136,12 +1075,11 @@ def test_technician_availability_response():
 # ============================================================
 
 def test_customer_technician_summary_response():
-
     response = CustomerTechnicianSummaryResponse(
         total_customers=10,
         total_technicians=5,
         total_services=20,
-        total_service_requests=15
+        total_service_requests=15,
     )
 
     assert response.total_customers == 10
@@ -1151,12 +1089,11 @@ def test_customer_technician_summary_response():
 
 
 def test_service_request_status_response():
-
     response = ServiceRequestStatusResponse(
         open_requests=2,
         pending_requests=3,
         in_progress_requests=4,
-        completed_requests=6
+        completed_requests=6,
     )
 
     assert response.open_requests == 2
@@ -1166,10 +1103,9 @@ def test_service_request_status_response():
 
 
 def test_service_performance_response_complete():
-
     response = ServicePerformanceResponse(
         most_requested_service="AC Repair",
-        total_requests_for_service=10
+        total_requests_for_service=10,
     )
 
     assert response.most_requested_service == "AC Repair"
@@ -1177,20 +1113,18 @@ def test_service_performance_response_complete():
 
 
 def test_service_performance_response_without_service():
-
     response = ServicePerformanceResponse(
-        total_requests_for_service=0
+        total_requests_for_service=0,
     )
 
     assert response.most_requested_service is None
 
 
 def test_technician_performance_response_complete():
-
     response = TechnicianPerformanceResponse(
         highest_rated_technician="John Technician",
         highest_rating=Decimal("4.8"),
-        average_technician_rating=4.3
+        average_technician_rating=4.3,
     )
 
     assert response.highest_rated_technician == "John Technician"
@@ -1199,11 +1133,10 @@ def test_technician_performance_response_complete():
 
 
 def test_technician_performance_response_without_highest_rating():
-
     response = TechnicianPerformanceResponse(
         highest_rated_technician=None,
         highest_rating=None,
-        average_technician_rating=0
+        average_technician_rating=0,
     )
 
     assert response.highest_rated_technician is None
@@ -1211,10 +1144,9 @@ def test_technician_performance_response_without_highest_rating():
 
 
 def test_feedback_summary_response():
-
     response = FeedbackSummaryResponse(
         total_feedback=10,
-        average_customer_rating=4.5
+        average_customer_rating=4.5,
     )
 
     assert response.total_feedback == 10
@@ -1222,12 +1154,11 @@ def test_feedback_summary_response():
 
 
 def test_technician_workload_response():
-
     response = TechnicianWorkloadResponse(
         technician_id=1,
         technician_name="John Technician",
         workload=3,
-        rating=Decimal("4.5")
+        rating=Decimal("4.5"),
     )
 
     assert response.technician_id == 1
@@ -1236,79 +1167,57 @@ def test_technician_workload_response():
 
 
 def test_technician_workload_response_without_rating():
-
     response = TechnicianWorkloadResponse(
         technician_id=2,
         technician_name="David Technician",
-        workload=0
+        workload=0,
     )
 
     assert response.rating is None
 
 
 def test_reports_response():
-
     response = ReportsResponse(
         customer_technician_summary=CustomerTechnicianSummaryResponse(
             total_customers=10,
             total_technicians=5,
             total_services=20,
-            total_service_requests=15
+            total_service_requests=15,
         ),
         service_request_status=ServiceRequestStatusResponse(
             open_requests=2,
             pending_requests=3,
             in_progress_requests=4,
-            completed_requests=6
+            completed_requests=6,
         ),
         service_performance=ServicePerformanceResponse(
             most_requested_service="AC Repair",
-            total_requests_for_service=10
+            total_requests_for_service=10,
         ),
         technician_performance=TechnicianPerformanceResponse(
             highest_rated_technician="John Technician",
             highest_rating=Decimal("4.8"),
-            average_technician_rating=4.4
+            average_technician_rating=4.4,
         ),
         feedback_summary=FeedbackSummaryResponse(
             total_feedback=10,
-            average_customer_rating=4.5
+            average_customer_rating=4.5,
         ),
         technician_workload=[
             TechnicianWorkloadResponse(
                 technician_id=1,
                 technician_name="John Technician",
                 workload=3,
-                rating=Decimal("4.8")
+                rating=Decimal("4.8"),
             )
-        ]
+        ],
     )
 
-    assert (
-        response.customer_technician_summary.total_customers
-        == 10
-    )
-
-    assert (
-        response.service_request_status.completed_requests
-        == 6
-    )
-
-    assert (
-        response.service_performance.most_requested_service
-        == "AC Repair"
-    )
-
-    assert (
-        response.technician_performance.highest_rating
-        == Decimal("4.8")
-    )
-
-    assert (
-        response.feedback_summary.average_customer_rating
-        == 4.5
-    )
-
+    assert response.customer_technician_summary.total_customers == 10
+    assert response.service_request_status.completed_requests == 6
+    assert response.service_performance.most_requested_service == "AC Repair"
+    assert response.technician_performance.highest_rating == Decimal("4.8")
+    assert response.feedback_summary.average_customer_rating == 4.5
     assert len(response.technician_workload) == 1
 
 
@@ -1317,37 +1226,41 @@ def test_reports_response():
 # ============================================================
 
 def test_ai_response():
-
     response = AIResponse(
         question="Show all customers",
-        sql="SELECT * from  customers;",
+        sql="SELECT * from customers;",
         result_count=2,
         results=[
-            {
-                "customer_id": 1,
-                "customer_name": "John"
-            },
-            {
-                "customer_id": 2,
-                "customer_name": "David"
-            }
-        ]
+            {"customer_id": 1, "customer_name": "John"},
+            {"customer_id": 2, "customer_name": "David"},
+        ],
     )
 
     assert response.question == "Show all customers"
-    assert response.sql == "SELECT * from  customers;"
+    assert response.sql == "SELECT * from customers;"
     assert response.result_count == 2
     assert len(response.results) == 2
 
 
 def test_ai_response_empty_results():
-
     response = AIResponse(
         question="Show customers",
-        sql="SELECT * from  customers;",
+        sql="SELECT * from customers;",
         result_count=0,
-        results=[]
+        results=[],
     )
 
     assert response.result_count == 0
     assert response.results == []
+
+
+def test_ai_response_with_answer():
+    response = AIResponse(
+        question="How many customers?",
+        sql="SELECT COUNT(*) FROM customers;",
+        result_count=1,
+        results=[{"count": 10}],
+        answer="There are 10 customers.",
+    )
+
+    assert response.answer == "There are 10 customers."

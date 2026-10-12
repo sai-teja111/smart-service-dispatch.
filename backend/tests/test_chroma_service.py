@@ -489,21 +489,20 @@ def test_find_service_by_problem_no_match(
 # REFRESH COLLECTION - NO SKILLS
 # ============================================================
 
-@patch("modules.chroma_service.get_session")
+@patch("modules.chroma_service.get_session_context")
 def test_refresh_service_collection_no_skills(
-    mock_get_session
+    mock_get_session_context,
 ):
-
     session = MagicMock()
 
-    mock_get_session.return_value.__enter__.return_value = session
-
+    mock_get_session_context.return_value.__enter__.return_value = session
     session.exec.return_value.all.return_value = []
 
     with patch("builtins.print") as mock_print:
-
         refresh_service_collection()
 
+    mock_get_session_context.assert_called_once()
+    session.exec.assert_called_once()
     mock_print.assert_called_once_with(
         "No skills found in PostgreSQL."
     )
@@ -515,65 +514,54 @@ def test_refresh_service_collection_no_skills(
 
 @patch("modules.chroma_service.add_service_to_chroma")
 @patch("modules.chroma_service.collection")
-@patch("modules.chroma_service.get_session")
+@patch("modules.chroma_service.get_session_context")
 def test_refresh_service_collection_new_skills(
-    mock_get_session,
+    mock_get_session_context,
     mock_collection,
-    mock_add_service
+    mock_add_service,
 ):
-
     skill1 = SimpleNamespace(
         skill_id=1,
         skill_name="AC Repair",
         category="Home Appliance",
-        description="AC repair service"
+        description="AC repair service",
     )
 
     skill2 = SimpleNamespace(
         skill_id=2,
         skill_name="Plumbing",
         category="Home Service",
-        description="Plumbing service"
+        description="Plumbing service",
     )
 
     session = MagicMock()
 
-    mock_get_session.return_value.__enter__.return_value = session
-
-    session.exec.return_value.all.return_value = [
-        skill1,
-        skill2
-    ]
-
-    mock_collection.get.return_value = {
-        "ids": []
-    }
+    mock_get_session_context.return_value.__enter__.return_value = session
+    session.exec.return_value.all.return_value = [skill1, skill2]
+    mock_collection.get.return_value = {"ids": []}
 
     with patch("builtins.print") as mock_print:
-
         refresh_service_collection()
 
     mock_collection.delete.assert_not_called()
-
     assert mock_add_service.call_count == 2
 
     mock_add_service.assert_any_call(
         skill_id=1,
         skill_name="AC Repair",
         category="Home Appliance",
-        description="AC repair service"
+        description="AC repair service",
     )
 
     mock_add_service.assert_any_call(
         skill_id=2,
         skill_name="Plumbing",
         category="Home Service",
-        description="Plumbing service"
+        description="Plumbing service",
     )
 
     mock_print.assert_called_once_with(
-        "Service Chroma collection refreshed "
-        "with 2 skills."
+        "Service Chroma collection refreshed with 2 skills."
     )
 
 
@@ -583,56 +571,42 @@ def test_refresh_service_collection_new_skills(
 
 @patch("modules.chroma_service.add_service_to_chroma")
 @patch("modules.chroma_service.collection")
-@patch("modules.chroma_service.get_session")
+@patch("modules.chroma_service.get_session_context")
 def test_refresh_service_collection_existing_ids(
-    mock_get_session,
+    mock_get_session_context,
     mock_collection,
-    mock_add_service
+    mock_add_service,
 ):
-
     skill = SimpleNamespace(
         skill_id=5,
         skill_name="TV Repair",
         category="Electronics",
-        description="TV repair service"
+        description="TV repair service",
     )
 
     session = MagicMock()
 
-    mock_get_session.return_value.__enter__.return_value = session
-
-    session.exec.return_value.all.return_value = [
-        skill
-    ]
+    mock_get_session_context.return_value.__enter__.return_value = session
+    session.exec.return_value.all.return_value = [skill]
 
     mock_collection.get.return_value = {
-        "ids": [
-            "1",
-            "2",
-            "3"
-        ]
+        "ids": ["1", "2", "3"]
     }
 
     with patch("builtins.print") as mock_print:
-
         refresh_service_collection()
 
     mock_collection.delete.assert_called_once_with(
-        ids=[
-            "1",
-            "2",
-            "3"
-        ]
+        ids=["1", "2", "3"]
     )
 
     mock_add_service.assert_called_once_with(
         skill_id=5,
         skill_name="TV Repair",
         category="Electronics",
-        description="TV repair service"
+        description="TV repair service",
     )
 
     mock_print.assert_called_once_with(
-        "Service Chroma collection refreshed "
-        "with 1 skills."
+        "Service Chroma collection refreshed with 1 skills."
     )
