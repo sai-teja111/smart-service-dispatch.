@@ -1,5 +1,5 @@
 from  sqlmodel import select, func
-
+from uuid import UUID
 from Orm.database import get_session_context
 from Orm.customer import Customer
 from Orm.technician import Technician
@@ -212,4 +212,77 @@ def get_reports():
             },
 
             "technician_workload": technician_workload
+        }
+
+
+def get_customer_reports(customer_uuid: UUID):
+    with get_session_context() as session:
+
+        customer = session.exec(
+            select(Customer).where(
+                Customer.customer_uuid == customer_uuid
+            )
+        ).first()
+
+        if customer is None:
+            return None
+
+        statement = (
+            select(
+                ServiceRequest,
+                Skill.skill_name,
+                Technician.technician_uuid,
+                Technician.technician_name
+            )
+            .join(
+                Skill,
+                ServiceRequest.skill_id == Skill.skill_id
+            )
+            .outerjoin(
+                Technician,
+                ServiceRequest.assigned_technician_id
+                == Technician.technician_id
+            )
+            .where(
+                ServiceRequest.customer_id == customer.customer_id
+            )
+            .order_by(
+                ServiceRequest.request_date.desc()
+            )
+        )
+
+        rows = session.exec(statement).all()
+
+        reports = []
+
+        for (
+            service_request,
+            skill_name,
+            technician_uuid,
+            technician_name
+        ) in rows:
+
+            technician = None
+
+            if technician_uuid is not None:
+                technician = {
+                    "technician_uuid": technician_uuid,
+                    "technician_name": technician_name
+                }
+
+            reports.append({
+                "request_uuid": service_request.request_uuid,
+                "service": skill_name,
+                "problem_description": (
+                    service_request.problem_description
+                ),
+                "priority": service_request.priority,
+                "status": service_request.status,
+                "request_date": service_request.request_date,
+                "technician": technician
+            })
+
+        return {
+            "count": len(reports),
+            "reports": reports
         }

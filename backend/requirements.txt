@@ -1,4 +1,3 @@
-
 fastapi[standard]
 sqlmodel
 psycopg2-binary
@@ -9,3 +8,4 @@ bcrypt
 python-jose[cryptography]
 chromadb
 openai
+reportlab

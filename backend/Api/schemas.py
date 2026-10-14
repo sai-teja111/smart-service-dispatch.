@@ -1,3 +1,4 @@
+
 from datetime import datetime
 from uuid import UUID
 from decimal import Decimal
@@ -46,7 +47,6 @@ class CustomerRegister(BaseModel):
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
-
             raise ValueError(
                 "Customer name must contain only letters."
             )
@@ -60,13 +60,11 @@ class CustomerRegister(BaseModel):
         value = value.strip()
 
         if not value.isdigit() or len(value) != 10:
-
             raise ValueError(
                 "Phone number must contain exactly 10 digits."
             )
 
         if value[0] not in "6789":
-
             raise ValueError(
                 "Phone number must start with 6, 7, 8 or 9."
             )
@@ -78,25 +76,21 @@ class CustomerRegister(BaseModel):
     def validate_password(cls, value):
 
         if value != value.strip():
-
             raise ValueError(
                 "Password must not contain leading or trailing spaces."
             )
 
         if not any(char.isupper() for char in value):
-
             raise ValueError(
                 "Password must contain at least one uppercase letter."
             )
 
         if not any(char.islower() for char in value):
-
             raise ValueError(
                 "Password must contain at least one lowercase letter."
             )
 
         if not any(char.isdigit() for char in value):
-
             raise ValueError(
                 "Password must contain at least one digit."
             )
@@ -105,7 +99,6 @@ class CustomerRegister(BaseModel):
             not char.isalnum() and not char.isspace()
             for char in value
         ):
-
             raise ValueError(
                 "Password must contain at least one special character."
             )
@@ -119,7 +112,6 @@ class CustomerRegister(BaseModel):
         value = value.strip().lower()
 
         if value != "hyderabad":
-
             raise ValueError(
                 "Currently, service is available only in Hyderabad."
             )
@@ -133,7 +125,6 @@ class CustomerRegister(BaseModel):
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
-
             raise ValueError(
                 "Area must contain only letters."
             )
@@ -147,7 +138,6 @@ class CustomerRegister(BaseModel):
         value = value.strip()
 
         if not value.isdigit() or len(value) != 6:
-
             raise ValueError(
                 "Pincode must contain exactly 6 digits."
             )
@@ -171,9 +161,7 @@ class CustomerRegisterResponse(BaseModel):
 
 class TechnicianSkillInput(BaseModel):
 
-    skill_id: int = Field(
-        gt=0
-    )
+    skill_id: int = Field(gt=0)
 
     experience_years: int = Field(
         ge=0,
@@ -199,7 +187,6 @@ class TechnicianSkillInput(BaseModel):
         }
 
         if value not in allowed_levels:
-
             raise ValueError(
                 "Expertise level must be Beginner, Intermediate, Advanced, or Expert."
             )
@@ -228,13 +215,8 @@ class TechnicianRegister(BaseModel):
         max_length=72
     )
 
-    city: str = Field(
-        max_length=50
-    )
-
-    area: str = Field(
-        max_length=100
-    )
+    city: str = Field(max_length=50)
+    area: str = Field(max_length=100)
 
     pincode: str = Field(
         min_length=6,
@@ -252,7 +234,6 @@ class TechnicianRegister(BaseModel):
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
-
             raise ValueError(
                 "Technician name must contain only letters."
             )
@@ -266,13 +247,11 @@ class TechnicianRegister(BaseModel):
         value = value.strip()
 
         if not value.isdigit() or len(value) != 10:
-
             raise ValueError(
                 "Phone number must contain exactly 10 digits."
             )
 
         if value[0] not in "6789":
-
             raise ValueError(
                 "Phone number must start with 6, 7, 8 or 9."
             )
@@ -284,25 +263,21 @@ class TechnicianRegister(BaseModel):
     def validate_password(cls, value):
 
         if value != value.strip():
-
             raise ValueError(
                 "Password must not contain leading or trailing spaces."
             )
 
         if not any(char.isupper() for char in value):
-
             raise ValueError(
                 "Password must contain at least one uppercase letter."
             )
 
         if not any(char.islower() for char in value):
-
             raise ValueError(
                 "Password must contain at least one lowercase letter."
             )
 
         if not any(char.isdigit() for char in value):
-
             raise ValueError(
                 "Password must contain at least one digit."
             )
@@ -311,7 +286,6 @@ class TechnicianRegister(BaseModel):
             not char.isalnum() and not char.isspace()
             for char in value
         ):
-
             raise ValueError(
                 "Password must contain at least one special character."
             )
@@ -325,7 +299,6 @@ class TechnicianRegister(BaseModel):
         value = value.strip().lower()
 
         if value != "hyderabad":
-
             raise ValueError(
                 "Currently, service is available only in Hyderabad."
             )
@@ -339,7 +312,6 @@ class TechnicianRegister(BaseModel):
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
-
             raise ValueError(
                 "Area must contain only letters."
             )
@@ -353,7 +325,6 @@ class TechnicianRegister(BaseModel):
         value = value.strip()
 
         if not value.isdigit() or len(value) != 6:
-
             raise ValueError(
                 "Pincode must contain exactly 6 digits."
             )
@@ -382,9 +353,7 @@ class LoginRequest(BaseModel):
         max_length=10
     )
 
-    password: str = Field(
-        min_length=1
-    )
+    password: str = Field(min_length=1)
 
     @field_validator("phone")
     @classmethod
@@ -393,7 +362,6 @@ class LoginRequest(BaseModel):
         value = value.strip()
 
         if not value.isdigit() or len(value) != 10:
-
             raise ValueError(
                 "Phone number must contain exactly 10 digits."
             )
@@ -404,7 +372,6 @@ class LoginRequest(BaseModel):
 # ============================================================
 # TOKEN RESPONSE
 # ============================================================
-
 
 class TokenResponse(BaseModel):
 
@@ -687,9 +654,32 @@ class ReportsResponse(BaseModel):
 
 
 # ============================================================
+# CUSTOMER REPORT RESPONSE MODELS
+# ============================================================
+
+class CustomerReportRecordResponse(BaseModel):
+
+    request_uuid: UUID
+    service: str
+    problem_description: str
+    priority: str | None = None
+    status: str
+    request_date: datetime
+    technician: AssignedTechnicianResponse | None = None
+
+
+class CustomerReportsResponse(BaseModel):
+
+    count: int
+    reports: list[CustomerReportRecordResponse]
+
+
+# ============================================================
 # AI RESPONSE
 # ============================================================
+
 class AIResponse(BaseModel):
+
     question: str
     sql: str
     result_count: int

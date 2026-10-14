@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Wrench,
   TrendingUp,
+  Download,
 } from "lucide-react";
 
 import {
@@ -29,6 +30,7 @@ import {
 } from "recharts";
 
 import { getReports } from "../../api/reports";
+import api from "../../api/axios";
 
 const STATUS_COLORS = [
   "#64748b",
@@ -43,11 +45,9 @@ function SummaryCard({ title, value, icon: Icon, description }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-sm font-medium text-gray-500">{title}</p>
-
           <p className="mt-2 text-2xl font-bold text-gray-900">
             {value ?? 0}
           </p>
-
           {description && (
             <p className="mt-1 text-xs text-gray-500">{description}</p>
           )}
@@ -84,7 +84,9 @@ export default function Reports() {
   const [reports, setReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
+  const [downloadError, setDownloadError] = useState("");
 
   const loadReports = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
@@ -108,6 +110,39 @@ export default function Reports() {
       setRefreshing(false);
     }
   }, []);
+
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    setDownloadError("");
+
+    try {
+      const response = await api.get("/reports/pdf", {
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/pdf",
+      });
+
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = "technician_analytics_report.pdf";
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (err) {
+      setDownloadError(
+        "Unable to download the PDF. Please try again."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   useEffect(() => {
     loadReports();
@@ -199,18 +234,35 @@ export default function Reports() {
           </p>
         </div>
 
-        <button
-          onClick={() => loadReports(true)}
-          disabled={refreshing}
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <RefreshCw
-            size={16}
-            className={refreshing ? "animate-spin" : ""}
-          />
-          {refreshing ? "Refreshing..." : "Refresh Reports"}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <Download size={16} />
+            {downloading ? "Downloading..." : "Download PDF"}
+          </button>
+
+          <button
+            onClick={() => loadReports(true)}
+            disabled={refreshing}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <RefreshCw
+              size={16}
+              className={refreshing ? "animate-spin" : ""}
+            />
+            {refreshing ? "Refreshing..." : "Refresh Reports"}
+          </button>
+        </div>
       </div>
+
+      {downloadError && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {downloadError}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">

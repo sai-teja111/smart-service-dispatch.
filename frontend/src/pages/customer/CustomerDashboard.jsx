@@ -1,3 +1,4 @@
+
 import {
     AlertCircle,
     ArrowRight,
@@ -5,6 +6,8 @@ import {
     CheckCircle2,
     ClipboardList,
     Clock3,
+    Download,
+    FileText,
     Loader2,
     Plus,
     RefreshCw,
@@ -16,6 +19,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { getMyServiceRequests } from "../../api/serviceRequests";
+import {
+    getCustomerReports,
+    downloadCustomerReportsPdf,
+} from "../../api/reports";
 import { useAuth } from "../../context/AuthContext";
 
 const STATUS_STYLES = {
@@ -89,8 +96,11 @@ function CustomerDashboard() {
     const { user } = useAuth();
 
     const [requests, setRequests] = useState([]);
+    const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
+    const [reportsError, setReportsError] = useState("");
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
 
     const customerName =
         user?.name || user?.customer_name || "Customer";
@@ -126,9 +136,69 @@ function CustomerDashboard() {
         }
     }, []);
 
+    const loadCustomerReports = useCallback(async () => {
+        try {
+            setReportsError("");
+
+            const response = await getCustomerReports();
+
+            setReports(
+                Array.isArray(response?.reports)
+                    ? response.reports
+                    : []
+            );
+        } catch (reportError) {
+            const detail = reportError?.response?.data?.detail;
+
+            setReportsError(
+                typeof detail === "string"
+                    ? detail
+                    : "Unable to load your service reports."
+            );
+        }
+    }, []);
+
+    const handleDownloadPdf = async () => {
+        try {
+            setDownloadingPdf(true);
+            setReportsError("");
+
+            const pdfBlob = await downloadCustomerReportsPdf();
+
+            const downloadUrl = window.URL.createObjectURL(
+                new Blob([pdfBlob], {
+                    type: "application/pdf",
+                })
+            );
+
+            const link = document.createElement("a");
+            link.href = downloadUrl;
+            link.download = "customer_service_reports.pdf";
+
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+
+            window.setTimeout(() => {
+                window.URL.revokeObjectURL(downloadUrl);
+            }, 1000);
+        } catch (downloadError) {
+            const detail = downloadError?.response?.data?.detail;
+
+            setReportsError(
+                typeof detail === "string"
+                    ? detail
+                    : "Unable to download your PDF. Please try again."
+            );
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
     useEffect(() => {
         loadRequests();
-    }, [loadRequests]);
+        loadCustomerReports();
+    }, [loadRequests, loadCustomerReports]);
 
     const activeRequests = requests.filter((request) =>
         ["OPEN", "PENDING", "ASSIGNED"].includes(
@@ -159,6 +229,15 @@ function CustomerDashboard() {
             return dateB - dateA;
         })
         .slice(0, 3);
+
+    const recentReports = [...reports]
+        .sort((a, b) => {
+            const dateA = new Date(a.request_date || 0).getTime();
+            const dateB = new Date(b.request_date || 0).getTime();
+
+            return dateB - dateA;
+        })
+        .slice(0, 5);
 
     return (
         <div className="min-h-full bg-slate-50/70">
@@ -350,6 +429,171 @@ function CustomerDashboard() {
                                     Track service progress
                                 </span>
                             </div>
+                        </section>
+
+                        {/* My Reports */}
+                        <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="flex flex-col gap-4 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+                                <div className="flex items-start gap-3">
+                                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                                        <FileText size={22} />
+                                    </div>
+
+                                    <div>
+                                        <h2 className="text-lg font-bold text-slate-900">
+                                            My Reports
+                                        </h2>
+
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            Review your service history and
+                                            download your personal report.
+                                        </p>
+
+                                        <p className="mt-2 text-xs font-medium text-slate-500">
+                                            {reports.length} service{" "}
+                                            {reports.length === 1
+                                                ? "report"
+                                                : "reports"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDownloadPdf}
+                                    disabled={downloadingPdf}
+                                    className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {downloadingPdf ? (
+                                        <Loader2
+                                            size={17}
+                                            className="animate-spin"
+                                        />
+                                    ) : (
+                                        <Download size={17} />
+                                    )}
+
+                                    {downloadingPdf
+                                        ? "Downloading..."
+                                        : "Download PDF"}
+                                </button>
+                            </div>
+
+                            {reportsError && (
+                                <div
+                                    className="m-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:m-6"
+                                    role="alert"
+                                >
+                                    <div className="flex items-start gap-2">
+                                        <AlertCircle
+                                            size={18}
+                                            className="mt-0.5 shrink-0"
+                                        />
+                                        <span>{reportsError}</span>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={loadCustomerReports}
+                                        className="mt-2 font-semibold underline underline-offset-2"
+                                    >
+                                        Retry loading reports
+                                    </button>
+                                </div>
+                            )}
+
+                            {!reportsError && recentReports.length === 0 ? (
+                                <div className="px-6 py-10 text-center">
+                                    <ClipboardList
+                                        size={28}
+                                        className="mx-auto text-slate-400"
+                                    />
+
+                                    <h3 className="mt-3 font-semibold text-slate-900">
+                                        No reports available yet
+                                    </h3>
+
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Your service reports will appear here
+                                        when you create service requests.
+                                    </p>
+                                </div>
+                            ) : (
+                                recentReports.length > 0 && (
+                                    <div className="divide-y divide-slate-100">
+                                        {recentReports.map((report) => (
+                                            <div
+                                                key={report.request_uuid}
+                                                className="flex flex-col gap-3 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6"
+                                            >
+                                                <div className="min-w-0">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <h3 className="font-semibold text-slate-900">
+                                                            {report.service ||
+                                                                "Service Request"}
+                                                        </h3>
+
+                                                        <span
+                                                            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getStatusStyle(report.status)}`}
+                                                        >
+                                                            {getStatusLabel(
+                                                                report.status
+                                                            )}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="mt-1.5 text-sm leading-6 text-slate-500">
+                                                        {report.problem_description ||
+                                                            "No description provided."}
+                                                    </p>
+
+                                                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-500">
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            <CalendarDays
+                                                                size={14}
+                                                            />
+                                                            {report.request_date
+                                                                ? new Date(
+                                                                      report.request_date
+                                                                  ).toLocaleDateString()
+                                                                : "Date unavailable"}
+                                                        </span>
+
+                                                        <span>
+                                                            Priority:{" "}
+                                                            <span className="font-medium text-slate-700">
+                                                                {getStatusLabel(
+                                                                    report.priority ||
+                                                                        "Not specified"
+                                                                )}
+                                                            </span>
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="mt-2 text-xs text-slate-500">
+                                                        Technician:{" "}
+                                                        <span className="font-medium text-slate-700">
+                                                            {report.technician
+                                                                ?.technician_name ||
+                                                                "Not assigned"}
+                                                        </span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )
+                            )}
+
+                            {reports.length > 5 && (
+                                <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-center sm:px-6">
+                                    <p className="text-xs text-slate-500">
+                                        Showing the 5 most recent reports.
+                                        Download the PDF for your complete
+                                        service history.
+                                    </p>
+                                </div>
+                            )}
                         </section>
 
                         {/* Recent requests */}
