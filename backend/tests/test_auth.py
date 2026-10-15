@@ -137,6 +137,7 @@ def test_register_technician_user(mock_hash_password, mock_session):
     assert actual_response.technician_name == "Test Technician"
     assert actual_response.phone == "9876543211"
     assert actual_response.password_hash == "hashed_password"
+    assert actual_response.approval_status == "Pending"
 
 
 # ============================================================
@@ -266,6 +267,7 @@ def test_authenticate_technician_success(
         technician_uuid=uuid4(),
         phone="9876543211",
         password_hash="hashed_password",
+        approval_status="Approved",
         last_login_at=None,
     )
 
@@ -311,6 +313,7 @@ def test_authenticate_technician_wrong_password(
         technician_uuid=uuid4(),
         phone="9876543211",
         password_hash="hashed_password",
+        approval_status="Approved",
         last_login_at=None,
     )
 

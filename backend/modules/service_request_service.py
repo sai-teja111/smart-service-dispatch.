@@ -48,15 +48,18 @@ def detect_service(
     customer_uuid,
     problem_description
 ):
-
     # ========================================================
     # VALIDATE PROBLEM DESCRIPTION
     # ========================================================
 
+    if not isinstance(problem_description, str):
+        raise ValueError(
+            "Problem description must be a string."
+        )
+
     problem_description = problem_description.strip()
 
     if not problem_description:
-
         raise ValueError(
             "Problem description cannot be empty."
         )
@@ -66,16 +69,13 @@ def detect_service(
     # ========================================================
 
     with get_session_context() as session:
-
         customer = session.exec(
             select(Customer).where(
-                Customer.customer_uuid
-                == customer_uuid
+                Customer.customer_uuid == customer_uuid
             )
         ).first()
 
         if not customer:
-
             raise CustomerNotFoundError(
                 "Customer not found."
             )
@@ -93,7 +93,6 @@ def detect_service(
         # ====================================================
 
         if detection:
-
             return {
                 "skill_id": detection["skill_id"],
                 "skill_name": detection["skill_name"],
@@ -105,10 +104,7 @@ def detect_service(
 
         # ====================================================
         # SERVICE NOT DETECTED
-        #
-        # Match the CLI behavior:
-        # show all available services so the customer
-        # can manually select one.
+        # Show all services for manual selection.
         # ====================================================
 
         skills = session.exec(
@@ -120,7 +116,6 @@ def detect_service(
         available_services = []
 
         for skill in skills:
-
             available_services.append(
                 {
                     "skill_id": skill.skill_id,
@@ -148,13 +143,11 @@ def create_service_request(
     skill_id,
     priority
 ):
-
     # ========================================================
     # VALIDATE SKILL ID
     # ========================================================
 
     if not skill_id:
-
         raise ValueError(
             "A service must be selected before "
             "creating the service request."
@@ -164,10 +157,14 @@ def create_service_request(
     # VALIDATE PROBLEM DESCRIPTION
     # ========================================================
 
+    if not isinstance(problem_description, str):
+        raise ValueError(
+            "Problem description must be a string."
+        )
+
     problem_description = problem_description.strip()
 
     if not problem_description:
-
         raise ValueError(
             "Problem description cannot be empty."
         )
@@ -176,6 +173,11 @@ def create_service_request(
     # VALIDATE PRIORITY
     # ========================================================
 
+    if not isinstance(priority, str):
+        raise ValueError(
+            "Priority must be a string."
+        )
+
     priority = priority.strip().title()
 
     if priority not in [
@@ -183,7 +185,6 @@ def create_service_request(
         "Medium",
         "High"
     ]:
-
         raise ValueError(
             "Priority must be Low, Medium or High."
         )
@@ -193,16 +194,13 @@ def create_service_request(
     # ========================================================
 
     with get_session_context() as session:
-
         customer = session.exec(
             select(Customer).where(
-                Customer.customer_uuid
-                == customer_uuid
+                Customer.customer_uuid == customer_uuid
             )
         ).first()
 
         if not customer:
-
             raise CustomerNotFoundError(
                 "Customer not found."
             )
@@ -217,18 +215,12 @@ def create_service_request(
         )
 
         if not selected_skill:
-
             raise ValueError(
                 "Service not found."
             )
 
-        selected_skill_id = (
-            selected_skill.skill_id
-        )
-
-        selected_skill_name = (
-            selected_skill.skill_name
-        )
+        selected_skill_id = selected_skill.skill_id
+        selected_skill_name = selected_skill.skill_name
 
         # ====================================================
         # CHECK EXISTING PENDING REQUEST
@@ -239,7 +231,6 @@ def create_service_request(
             customer.customer_id,
             selected_skill_id
         ):
-
             raise DuplicateServiceRequestError(
                 f"You already have a pending "
                 f"{selected_skill_name} service request. "
@@ -253,32 +244,18 @@ def create_service_request(
         # ====================================================
 
         service_request = ServiceRequest(
-
             customer_id=customer.customer_id,
-
             skill_id=selected_skill_id,
-
-            problem_description=(
-                problem_description
-            ),
-
+            problem_description=problem_description,
             priority=priority,
-
             status="OPEN"
         )
 
-        session.add(
-            service_request
-        )
-
+        session.add(service_request)
         session.commit()
-
-        session.refresh(
-            service_request
-        )
+        session.refresh(service_request)
 
         request_id = service_request.request_id
-
         request_uuid = service_request.request_uuid
 
     # ========================================================
@@ -293,16 +270,13 @@ def create_service_request(
     technician_name = None
 
     if technician_id:
-
         with get_session_context() as session:
-
             assigned_technician = session.get(
                 Technician,
                 technician_id
             )
 
             if assigned_technician:
-
                 technician_uuid = (
                     assigned_technician.technician_uuid
                 )
@@ -316,42 +290,30 @@ def create_service_request(
     # ========================================================
 
     with get_session_context() as session:
-
         updated_request = session.get(
             ServiceRequest,
             request_id
         )
 
         if not updated_request:
-
             raise ServiceRequestNotFoundError(
                 "Service request not found after creation."
             )
 
-        request_status = (
-            updated_request.status
-        )
-
-        request_priority = (
-            updated_request.priority
-        )
+        request_status = updated_request.status
+        request_priority = updated_request.priority
 
     # ========================================================
     # BUILD RESULT
     # ========================================================
 
     response = {
-
         "message": (
             "Service request created successfully."
         ),
-
         "request_uuid": request_uuid,
-
         "service": selected_skill_name,
-
         "priority": request_priority,
-
         "status": request_status
     }
 
@@ -360,16 +322,12 @@ def create_service_request(
     # ========================================================
 
     if technician_uuid:
-
         response["technician"] = {
-
             "technician_uuid": technician_uuid,
-
             "technician_name": technician_name
         }
 
     else:
-
         response["technician"] = None
 
         response["message"] = (
@@ -388,22 +346,18 @@ def create_service_request(
 def get_customer_service_requests(
     customer_uuid
 ):
-
     with get_session_context() as session:
-
         # ====================================================
         # FIND CUSTOMER
         # ====================================================
 
         customer = session.exec(
             select(Customer).where(
-                Customer.customer_uuid
-                == customer_uuid
+                Customer.customer_uuid == customer_uuid
             )
         ).first()
 
         if not customer:
-
             raise CustomerNotFoundError(
                 "Customer not found."
             )
@@ -420,8 +374,7 @@ def get_customer_service_requests(
             )
             .join(
                 Skill,
-                ServiceRequest.skill_id
-                == Skill.skill_id
+                ServiceRequest.skill_id == Skill.skill_id
             )
             .outerjoin(
                 Technician,
@@ -437,57 +390,34 @@ def get_customer_service_requests(
             )
         )
 
-        results = session.exec(
-            statement
-        ).all()
+        results = session.exec(statement).all()
 
         service_requests = []
 
         for service_request, skill, technician in results:
-
             request_data = {
-
-                "request_uuid": (
-                    service_request.request_uuid
-                ),
-
+                "request_uuid": service_request.request_uuid,
                 "service": skill.skill_name,
-
                 "problem_description": (
                     service_request.problem_description
                 ),
-
-                "priority": (
-                    service_request.priority
-                ),
-
-                "status": (
-                    service_request.status
-                ),
-
-                "request_date": (
-                    service_request.request_date
-                ),
-
+                "priority": service_request.priority,
+                "status": service_request.status,
+                "request_date": service_request.request_date,
                 "technician": None
             }
 
             if technician:
-
                 request_data["technician"] = {
-
                     "technician_uuid": (
                         technician.technician_uuid
                     ),
-
                     "technician_name": (
                         technician.technician_name
                     )
                 }
 
-            service_requests.append(
-                request_data
-            )
+            service_requests.append(request_data)
 
         return service_requests
 
@@ -500,22 +430,18 @@ def get_customer_service_request(
     customer_uuid,
     request_uuid
 ):
-
     with get_session_context() as session:
-
         # ====================================================
         # FIND CUSTOMER
         # ====================================================
 
         customer = session.exec(
             select(Customer).where(
-                Customer.customer_uuid
-                == customer_uuid
+                Customer.customer_uuid == customer_uuid
             )
         ).first()
 
         if not customer:
-
             raise CustomerNotFoundError(
                 "Customer not found."
             )
@@ -532,8 +458,7 @@ def get_customer_service_request(
             )
             .join(
                 Skill,
-                ServiceRequest.skill_id
-                == Skill.skill_id
+                ServiceRequest.skill_id == Skill.skill_id
             )
             .outerjoin(
                 Technician,
@@ -541,20 +466,15 @@ def get_customer_service_request(
                 == Technician.technician_id
             )
             .where(
-                ServiceRequest.request_uuid
-                == request_uuid,
-
+                ServiceRequest.request_uuid == request_uuid,
                 ServiceRequest.customer_id
                 == customer.customer_id
             )
         )
 
-        result = session.exec(
-            statement
-        ).first()
+        result = session.exec(statement).first()
 
         if not result:
-
             raise ServiceRequestNotFoundError(
                 "Service request not found."
             )
@@ -562,43 +482,21 @@ def get_customer_service_request(
         service_request, skill, technician = result
 
         request_data = {
-
-            "request_uuid": (
-                service_request.request_uuid
-            ),
-
+            "request_uuid": service_request.request_uuid,
             "service": skill.skill_name,
-
             "problem_description": (
                 service_request.problem_description
             ),
-
-            "priority": (
-                service_request.priority
-            ),
-
-            "status": (
-                service_request.status
-            ),
-
-            "request_date": (
-                service_request.request_date
-            ),
-
+            "priority": service_request.priority,
+            "status": service_request.status,
+            "request_date": service_request.request_date,
             "technician": None
         }
 
         if technician:
-
             request_data["technician"] = {
-
-                "technician_uuid": (
-                    technician.technician_uuid
-                ),
-
-                "technician_name": (
-                    technician.technician_name
-                )
+                "technician_uuid": technician.technician_uuid,
+                "technician_name": technician.technician_name
             }
 
         return request_data
@@ -612,22 +510,18 @@ def get_service_request_history(
     customer_uuid,
     request_uuid
 ):
-
     with get_session_context() as session:
-
         # ====================================================
         # FIND CUSTOMER
         # ====================================================
 
         customer = session.exec(
             select(Customer).where(
-                Customer.customer_uuid
-                == customer_uuid
+                Customer.customer_uuid == customer_uuid
             )
         ).first()
 
         if not customer:
-
             raise CustomerNotFoundError(
                 "Customer not found."
             )
@@ -638,16 +532,12 @@ def get_service_request_history(
 
         service_request = session.exec(
             select(ServiceRequest).where(
-                ServiceRequest.request_uuid
-                == request_uuid,
-
-                ServiceRequest.customer_id
-                == customer.customer_id
+                ServiceRequest.request_uuid == request_uuid,
+                ServiceRequest.customer_id == customer.customer_id
             )
         ).first()
 
         if not service_request:
-
             raise ServiceRequestNotFoundError(
                 "Service request not found."
             )
@@ -670,7 +560,6 @@ def get_service_request_history(
         history = []
 
         for record in history_records:
-
             history.append(
                 {
                     "old_status": record.old_status,
@@ -681,13 +570,8 @@ def get_service_request_history(
             )
 
         return {
-
-            "request_uuid": (
-                service_request.request_uuid
-            ),
-
+            "request_uuid": service_request.request_uuid,
             "count": len(history),
-
             "history": history
         }
 
@@ -702,50 +586,64 @@ def update_service_request_status(
     requested_status,
     remarks
 ):
-
     # ========================================================
-    # NORMALIZE STATUS
+    # VALIDATE AND NORMALIZE STATUS
     # ========================================================
 
-    requested_status = (
-        requested_status.strip().upper()
-    )
-
-    if requested_status == "IN_PROGRESS":
-
-        new_status = "IN PROGRESS"
-
-    elif requested_status == "IN PROGRESS":
-
-        new_status = "IN PROGRESS"
-
-    elif requested_status == "COMPLETED":
-
-        new_status = "COMPLETED"
-
-    else:
-
+    if not isinstance(requested_status, str):
         raise InvalidServiceRequestStatusError(
             "Status must be IN_PROGRESS or COMPLETED."
         )
 
-    with get_session_context() as session:
+    if remarks is not None and not isinstance(remarks, str):
+        raise ValueError(
+            "Remarks must be a string."
+        )
 
+    requested_status = requested_status.strip().upper()
+
+    if requested_status == "IN_PROGRESS":
+        new_status = "IN PROGRESS"
+
+    elif requested_status == "IN PROGRESS":
+        new_status = "IN PROGRESS"
+
+    elif requested_status == "COMPLETED":
+        new_status = "COMPLETED"
+
+    else:
+        raise InvalidServiceRequestStatusError(
+            "Status must be IN_PROGRESS or COMPLETED."
+        )
+
+    # Preserve the original remarks behavior while validating
+    # its type before calling strip().
+    remarks = remarks.strip() if remarks else None
+
+    with get_session_context() as session:
         # ====================================================
         # FIND TECHNICIAN
         # ====================================================
 
         technician = session.exec(
             select(Technician).where(
-                Technician.technician_uuid
-                == technician_uuid
+                Technician.technician_uuid == technician_uuid
             )
         ).first()
 
         if not technician:
-
             raise TechnicianNotFoundError(
                 "Technician not found."
+            )
+
+        # ====================================================
+        # VERIFY TECHNICIAN APPROVAL
+        # ====================================================
+
+        if getattr(technician, "approval_status", "Approved") != "Approved":
+            raise UnauthorizedServiceRequestError(
+                "Only approved technicians can update "
+                "service request statuses."
             )
 
         # ====================================================
@@ -754,13 +652,11 @@ def update_service_request_status(
 
         service_request = session.exec(
             select(ServiceRequest).where(
-                ServiceRequest.request_uuid
-                == request_uuid
+                ServiceRequest.request_uuid == request_uuid
             )
         ).first()
 
         if not service_request:
-
             raise ServiceRequestNotFoundError(
                 "Service request not found."
             )
@@ -773,7 +669,6 @@ def update_service_request_status(
             service_request.assigned_technician_id
             != technician.technician_id
         ):
-
             raise UnauthorizedServiceRequestError(
                 "You are not assigned to this "
                 "service request."
@@ -790,7 +685,6 @@ def update_service_request_status(
         # ====================================================
 
         if old_status == new_status:
-
             raise InvalidServiceRequestStatusError(
                 "Service request already has this status."
             )
@@ -803,7 +697,6 @@ def update_service_request_status(
             new_status == "IN PROGRESS"
             and old_status != "PENDING"
         ):
-
             raise InvalidServiceRequestStatusError(
                 "Service request must be PENDING "
                 "before it can be moved to IN PROGRESS."
@@ -813,7 +706,6 @@ def update_service_request_status(
             new_status == "COMPLETED"
             and old_status != "IN PROGRESS"
         ):
-
             raise InvalidServiceRequestStatusError(
                 "Service request must be IN PROGRESS "
                 "before it can be completed."
@@ -829,12 +721,8 @@ def update_service_request_status(
         # WORKLOAD
         # ====================================================
 
-        previous_workload = (
-            technician.workload or 0
-        )
-
+        previous_workload = technician.workload or 0
         new_workload = previous_workload
-
         availability_changed = False
 
         # ====================================================
@@ -845,7 +733,6 @@ def update_service_request_status(
             new_status == "COMPLETED"
             and old_status != "COMPLETED"
         ):
-
             new_workload = max(
                 previous_workload - 1,
                 0
@@ -854,16 +741,14 @@ def update_service_request_status(
             technician.workload = new_workload
 
             # =================================================
-            # BUSY → AVAILABLE
+            # BUSY -> AVAILABLE
             # =================================================
 
             if (
                 technician.availability == "Busy"
                 and new_workload < 5
             ):
-
                 technician.availability = "Available"
-
                 availability_changed = True
 
         # ====================================================
@@ -874,11 +759,7 @@ def update_service_request_status(
             request_id=service_request.request_id,
             old_status=old_status,
             new_status=new_status,
-            remarks=(
-                remarks.strip()
-                if remarks
-                else None
-            )
+            remarks=remarks
         )
 
         session.add(history)
@@ -889,56 +770,27 @@ def update_service_request_status(
 
         session.commit()
 
-        session.refresh(
-            service_request
-        )
+        session.refresh(service_request)
 
         return {
-
             "message": (
                 "Service request status "
                 "updated successfully."
             ),
-
-            "request_uuid": (
-                service_request.request_uuid
-            ),
-
+            "request_uuid": service_request.request_uuid,
             "old_status": old_status,
-
-            "new_status": (
-                service_request.status
-            ),
-
+            "new_status": service_request.status,
             "remarks": history.remarks,
-
             "technician": {
-
-                "technician_uuid": (
-                    technician.technician_uuid
-                ),
-
-                "technician_name": (
-                    technician.technician_name
-                ),
-
-                "previous_workload": (
-                    previous_workload
-                ),
-
-                "new_workload": (
-                    new_workload
-                ),
-
-                "availability": (
-                    technician.availability
-                ),
-
-                "availability_changed": (
-                    availability_changed
-                )
+                "technician_uuid": technician.technician_uuid,
+                "technician_name": technician.technician_name,
+                "previous_workload": previous_workload,
+                "new_workload": new_workload,
+                "availability": technician.availability,
+                "availability_changed": availability_changed
             }
         }
+
 
 # ============================================================
 # GET CUSTOMER UUID FOR A SERVICE REQUEST
@@ -951,7 +803,6 @@ def get_customer_uuid_for_request(request_uuid):
     """
 
     with get_session_context() as session:
-
         service_request = session.exec(
             select(ServiceRequest).where(
                 ServiceRequest.request_uuid == request_uuid

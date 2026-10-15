@@ -1,6 +1,7 @@
-from  decimal import Decimal
 
-from  sqlmodel import select
+from decimal import Decimal
+
+from sqlmodel import select
 
 from Orm.database import get_session_context
 
@@ -116,17 +117,17 @@ def generate_matching_explanation(
 
     if location_type == "Same Area":
         reasons.append(
-            "Technician is from  the same area"
+            "Technician is from the same area"
         )
 
     elif location_type == "Nearby Area":
         reasons.append(
-            "Technician is from  a nearby area"
+            "Technician is from a nearby area"
         )
 
     else:
         reasons.append(
-            "Technician is from  another area"
+            "Technician is from another area"
         )
 
     if pincode_score > 0:
@@ -211,6 +212,36 @@ def find_best_technician(request_id):
 
                 return None
 
+            # Prevent duplicate assignments for the same request.
+            existing_assignment_statement = (
+                select(Assignment)
+                .where(
+                    Assignment.request_id == request_id
+                )
+            )
+
+            existing_assignment = session.exec(
+                existing_assignment_statement
+            ).first()
+
+            if existing_assignment:
+
+                print(
+                    "\nThis service request already has "
+                    "an assignment."
+                )
+
+                print(
+                    f"Request ID    : {request_id}"
+                )
+
+                print(
+                    f"Technician ID : "
+                    f"{existing_assignment.technician_id}"
+                )
+
+                return existing_assignment.technician_id
+
             skill_id = service_request.skill_id
             priority = service_request.priority
 
@@ -245,6 +276,8 @@ def find_best_technician(request_id):
             else:
                 skill_name = "Unknown Service"
 
+            # Only verified technician-skill associations
+            # for the requested skill are eligible.
             technician_skill_statement = (
                 select(TechnicianSkill)
                 .where(
@@ -276,12 +309,15 @@ def find_best_technician(request_id):
                 for ts in technician_skills
             ]
 
+            # Only approved, available technicians with
+            # a verified matching skill are considered.
             technician_statement = (
                 select(Technician)
                 .where(
                     Technician.technician_id.in_(
                         technician_ids
                     ),
+                    Technician.approval_status == "Approved",
                     Technician.availability == "Available"
                 )
             )
@@ -302,11 +338,9 @@ def find_best_technician(request_id):
             if not technicians:
 
                 print(
-                    "\nNo available verified technician found"
-                )
-
-                print(
-                    "for the requested service."
+                    "\nNo available approved technician "
+                    "with the required verified skill "
+                    "was found."
                 )
 
                 return None
@@ -357,6 +391,13 @@ def find_best_technician(request_id):
                 )
 
                 if not technician_skill:
+                    continue
+
+                # Defensive verification before scoring.
+                if not technician_skill.is_verified:
+                    continue
+
+                if technician_skill.skill_id != skill_id:
                     continue
 
                 experience = (
@@ -573,6 +614,15 @@ def find_best_technician(request_id):
 
                 return None
 
+            # Recheck eligibility immediately before assignment.
+            if technician.approval_status != "Approved":
+
+                print(
+                    "\nSelected technician is not approved."
+                )
+
+                return None
+
             if technician.availability != "Available":
 
                 print(
@@ -599,6 +649,46 @@ def find_best_technician(request_id):
                 )
 
                 return None
+
+            # Recheck the verified skill association.
+            verified_skill_statement = (
+                select(TechnicianSkill)
+                .where(
+                    TechnicianSkill.technician_id
+                    == technician_id,
+                    TechnicianSkill.skill_id == skill_id,
+                    TechnicianSkill.is_verified == True
+                )
+            )
+
+            current_verified_skill = session.exec(
+                verified_skill_statement
+            ).first()
+
+            if not current_verified_skill:
+
+                print(
+                    "\nSelected technician no longer has "
+                    "the required verified skill."
+                )
+
+                return None
+
+            # Check once more before creating the assignment.
+            existing_assignment = session.exec(
+                select(Assignment).where(
+                    Assignment.request_id == request_id
+                )
+            ).first()
+
+            if existing_assignment:
+
+                print(
+                    "\nThis service request was already "
+                    "assigned."
+                )
+
+                return existing_assignment.technician_id
 
             new_workload = (
                 current_workload + 1

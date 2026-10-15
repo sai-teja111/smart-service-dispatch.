@@ -2,7 +2,7 @@ from Log_config import log
 
 from  fastapi import APIRouter, Depends, HTTPException
 
-from Api.dependencies import get_current_user
+from Api.role_dependencies import require_technician
 
 from Api.schemas import (
     TechnicianServiceRequestResponse,
@@ -33,7 +33,7 @@ router = APIRouter(
     response_model=TechnicianServiceRequestListResponse
 )
 def view_assigned_service_requests(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
 
     logger.info(
@@ -42,26 +42,6 @@ def view_assigned_service_requests(
         current_user["user_uuid"]
     )
 
-    # ========================================================
-    # CHECK TECHNICIAN ROLE
-    # ========================================================
-
-    if current_user["role"] != "technician":
-
-        logger.warning(
-            "View assigned service requests denied | "
-            "user_uuid: %s | role: %s",
-            current_user["user_uuid"],
-            current_user["role"]
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Only technicians can view "
-                "assigned service requests."
-            )
-        )
 
     # ========================================================
     # GET ASSIGNED SERVICE REQUESTS
@@ -132,7 +112,7 @@ def view_assigned_service_requests(
 )
 def view_assigned_service_request(
     request_uuid: str,
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
 
     logger.info(
@@ -142,27 +122,7 @@ def view_assigned_service_request(
         request_uuid
     )
 
-    # ========================================================
-    # CHECK TECHNICIAN ROLE
-    # ========================================================
-
-    if current_user["role"] != "technician":
-
-        logger.warning(
-            "View assigned service request denied | "
-            "user_uuid: %s | role: %s | request_uuid: %s",
-            current_user["user_uuid"],
-            current_user["role"],
-            request_uuid
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail=(
-                "Only technicians can view "
-                "assigned service requests."
-            )
-        )
+   
 
     # ========================================================
     # GET ASSIGNED SERVICE REQUEST

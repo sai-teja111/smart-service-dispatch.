@@ -1,4 +1,3 @@
-
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -219,7 +218,7 @@ def test_view_reports_customer_denied():
 
     assert response.status_code == 403
     assert response.json() == {
-        "detail": "Only technicians can view reports."
+        "detail": "Technician access required."
     }
 
     mock_get_reports.assert_not_called()

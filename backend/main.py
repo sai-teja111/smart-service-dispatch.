@@ -1,4 +1,3 @@
-
 from time import perf_counter
 from contextlib import asynccontextmanager
 
@@ -30,10 +29,12 @@ from Orm.assignment import Assignment
 from Orm.service_history import ServiceHistory
 from Orm.feedback import Feedback
 from Orm.notifications import Notification
-
+from Orm.admin import Admin
+from modules.chroma_service import refresh_service_collection
 
 # API routers
 from Api.auth import router as auth_router
+from Api.admin import router as admin_router
 from Api.dependencies import get_current_user
 from Api.service_request import router as service_request_router
 from Api.technician import router as technician_router
@@ -66,10 +67,16 @@ async def lifespan(app: FastAPI):
 
     logger.info("Database tables created successfully")
 
+    # Initialize ChromaDB from PostgreSQL skills.
+    logger.info("Refreshing ChromaDB service collection")
+
+    refresh_service_collection()
+
+    logger.info("ChromaDB service collection initialized successfully")
+
     yield
 
     logger.info("FastAPI application shutdown")
-
 
 # --------------------------------------------------
 # FastAPI Application
@@ -179,6 +186,7 @@ async def general_exception_handler(
 # --------------------------------------------------
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(service_request_router)
 app.include_router(technician_router)
 app.include_router(history_router)

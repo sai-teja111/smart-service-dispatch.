@@ -1,9 +1,17 @@
-
 import { Navigate, Route, Routes } from "react-router-dom";
 
 import Home from "../pages/Home";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
+
+// ADMIN
+import AdminLogin from "../pages/admin/AdminLogin";
+import AdminDashboard from "../pages/admin/AdminDashboard";
+import AdminLayout from "../layouts/AdminLayout";
+import AdminRoute from "./AdminRoute";
+import AdminCustomers from "../pages/admin/AdminCustomers";
+import AdminTechnicians from "../pages/admin/AdminTechnicians";
+import AdminReports from "../pages/admin/AdminReports";
 
 // CUSTOMER
 import CustomerLayout from "../layouts/CustomerLayout";
@@ -32,6 +40,34 @@ function AppRoutes() {
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+
+            {/* ADMIN LOGIN */}
+            <Route
+                path="/admin/login"
+                element={<AdminLogin />}
+            />
+
+            {/* ADMIN PROTECTED ROUTES */}
+            <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<AdminLayout />}>
+                    <Route index element={<AdminDashboard />} />
+
+                    <Route
+                        path="customers"
+                        element={<AdminCustomers />}
+                    />
+
+                    <Route
+                        path="technicians"
+                        element={<AdminTechnicians />}
+                    />
+
+                    <Route
+                        path="reports"
+                        element={<AdminReports />}
+                    />
+                </Route>
+            </Route>
 
             {/* CUSTOMER */}
             <Route path="/customer" element={<CustomerLayout />}>
@@ -62,7 +98,6 @@ function AppRoutes() {
                     element={<Feedback />}
                 />
 
-                {/* CUSTOMER AI ASSISTANT */}
                 <Route
                     path="ai-assistant"
                     element={<CustomerAIAssistant />}

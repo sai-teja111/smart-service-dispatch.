@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -354,13 +353,23 @@ function Home() {
                         ))}
                     </nav>
 
-                    <div className="hidden items-center gap-3 sm:flex">
+                    {/* Desktop actions */}
+                    <div className="hidden items-center gap-2 sm:flex">
+                        <Link
+                            to="/admin/login"
+                            className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-blue-50 hover:text-blue-700"
+                        >
+                            <ShieldCheck size={16} />
+                            Admin
+                        </Link>
+
                         <Link
                             to="/login"
                             className="rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-100 hover:text-blue-700"
                         >
                             Log in
                         </Link>
+
                         <Link
                             to="/register"
                             className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-lg"
@@ -369,6 +378,7 @@ function Home() {
                         </Link>
                     </div>
 
+                    {/* Mobile menu button */}
                     <button
                         type="button"
                         aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
@@ -380,6 +390,7 @@ function Home() {
                     </button>
                 </div>
 
+                {/* Mobile menu */}
                 {mobileMenuOpen && (
                     <div className="border-t border-slate-100 bg-white px-5 py-5 shadow-xl sm:hidden">
                         <nav className="flex flex-col gap-1">
@@ -394,18 +405,29 @@ function Home() {
                                 </a>
                             ))}
                         </nav>
-                        <div className="mt-4 grid grid-cols-2 gap-3 border-t border-slate-100 pt-4">
+
+                        <div className="mt-4 grid grid-cols-3 gap-2 border-t border-slate-100 pt-4">
+                            <Link
+                                to="/admin/login"
+                                onClick={closeMenu}
+                                className="flex items-center justify-center gap-1 rounded-xl border border-blue-100 px-2 py-3 text-center text-xs font-bold text-blue-700 transition hover:bg-blue-50"
+                            >
+                                <ShieldCheck size={15} />
+                                Admin
+                            </Link>
+
                             <Link
                                 to="/login"
                                 onClick={closeMenu}
-                                className="rounded-xl border border-slate-200 px-4 py-3 text-center text-sm font-bold text-slate-700"
+                                className="rounded-xl border border-slate-200 px-2 py-3 text-center text-xs font-bold text-slate-700 transition hover:bg-slate-50"
                             >
                                 Log in
                             </Link>
+
                             <Link
                                 to="/register"
                                 onClick={closeMenu}
-                                className="rounded-xl bg-blue-600 px-4 py-3 text-center text-sm font-bold text-white"
+                                className="rounded-xl bg-blue-600 px-2 py-3 text-center text-xs font-bold text-white transition hover:bg-blue-700"
                             >
                                 Get started
                             </Link>
@@ -805,10 +827,25 @@ function Home() {
                     </Link>
 
                     <div className="flex flex-wrap gap-x-5 gap-y-3 text-xs font-medium text-slate-400">
-                        <a href="#about" className="transition hover:text-white">About</a>
-                        <a href="#features" className="transition hover:text-white">Features</a>
-                        <a href="#how-it-works" className="transition hover:text-white">How it works</a>
-                        <Link to="/login" className="transition hover:text-white">Login</Link>
+                        <a href="#about" className="transition hover:text-white">
+                            About
+                        </a>
+                        <a href="#features" className="transition hover:text-white">
+                            Features
+                        </a>
+                        <a href="#how-it-works" className="transition hover:text-white">
+                            How it works
+                        </a>
+                        <Link to="/login" className="transition hover:text-white">
+                            Login
+                        </Link>
+                        <Link
+                            to="/admin/login"
+                            className="inline-flex items-center gap-1.5 transition hover:text-blue-400"
+                        >
+                            <ShieldCheck size={14} />
+                            Admin Portal
+                        </Link>
                     </div>
 
                     <p className="text-xs text-slate-500">

@@ -6,3 +6,4 @@ from Orm.service_request import ServiceRequest
 from Orm.assignment import Assignment
 from Orm.service_history import ServiceHistory
 from Orm.feedback import Feedback
+from Orm.admin import Admin

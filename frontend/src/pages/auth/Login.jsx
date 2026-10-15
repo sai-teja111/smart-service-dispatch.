@@ -1,7 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -95,8 +94,17 @@ function Login() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4 py-8">
             <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
+
+                {/* Back to Home */}
+                <Link
+                    to="/"
+                    className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-blue-600"
+                >
+                    <ArrowLeft size={18} />
+                    Back to Home
+                </Link>
 
                 <div className="mb-8 text-center">
                     <h1 className="text-3xl font-bold text-slate-900">

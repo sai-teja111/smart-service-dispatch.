@@ -16,7 +16,8 @@ class Technician(SQLModel, table=True):
 
     technician_uuid: uuid.UUID = Field(
         default_factory=uuid.uuid4,
-        unique=True
+        unique=True,
+        index=True
     )
 
     technician_name: str = Field(
@@ -44,6 +45,15 @@ class Technician(SQLModel, table=True):
         max_length=10
     )
 
+    # Admin approval status.
+    # Existing database records are Approved.
+    # New registrations will explicitly use Pending.
+    approval_status: str = Field(
+        default="Pending",
+        max_length=20,
+        nullable=False
+    )
+
     availability: str = Field(
         default="Available",
         max_length=20
@@ -67,7 +77,6 @@ class Technician(SQLModel, table=True):
     @field_validator("technician_name")
     @classmethod
     def validate_technician_name(cls, value):
-
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
@@ -80,7 +89,6 @@ class Technician(SQLModel, table=True):
     @field_validator("phone")
     @classmethod
     def validate_phone(cls, value):
-
         value = value.strip()
 
         if not value.isdigit() or len(value) != 10:
@@ -93,7 +101,6 @@ class Technician(SQLModel, table=True):
     @field_validator("city")
     @classmethod
     def validate_city(cls, value):
-
         value = value.strip().lower()
 
         if value != "hyderabad":
@@ -106,7 +113,6 @@ class Technician(SQLModel, table=True):
     @field_validator("area")
     @classmethod
     def validate_area(cls, value):
-
         value = value.strip()
 
         if not value.replace(" ", "").isalpha():
@@ -119,7 +125,6 @@ class Technician(SQLModel, table=True):
     @field_validator("pincode")
     @classmethod
     def validate_pincode(cls, value):
-
         value = value.strip()
 
         if not value.isdigit() or len(value) != 6:
@@ -129,10 +134,27 @@ class Technician(SQLModel, table=True):
 
         return value
 
+    @field_validator("approval_status")
+    @classmethod
+    def validate_approval_status(cls, value):
+        allowed_values = {
+            "Pending",
+            "Approved",
+            "Rejected"
+        }
+
+        value = value.strip().title()
+
+        if value not in allowed_values:
+            raise ValueError(
+                "Approval status must be Pending, Approved, or Rejected."
+            )
+
+        return value
+
     @field_validator("availability")
     @classmethod
     def validate_availability(cls, value):
-
         allowed_values = {
             "Available",
             "Busy",
@@ -151,7 +173,6 @@ class Technician(SQLModel, table=True):
     @field_validator("workload")
     @classmethod
     def validate_workload(cls, value):
-
         if value < 0:
             raise ValueError(
                 "Workload cannot be negative."
@@ -162,7 +183,6 @@ class Technician(SQLModel, table=True):
     @field_validator("rating")
     @classmethod
     def validate_rating(cls, value):
-
         if not 0 <= value <= 5:
             raise ValueError(
                 "Rating must be between 0 and 5."

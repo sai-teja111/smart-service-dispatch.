@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from types import SimpleNamespace
 from uuid import uuid4
@@ -187,9 +186,7 @@ def test_view_assigned_service_requests_wrong_role():
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "Only technicians can view assigned service requests."
-    )
+    assert response.json()["detail"] == "Technician access required."
 
 
 # ============================================================
@@ -259,9 +256,7 @@ def test_view_assigned_service_request_wrong_role():
         app.dependency_overrides.clear()
 
     assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "Only technicians can view assigned service requests."
-    )
+    assert response.json()["detail"] == "Technician access required."
 
 
 # ============================================================

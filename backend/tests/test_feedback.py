@@ -194,7 +194,7 @@ def test_create_feedback_wrong_role():
 
         assert response.status_code == 403
         assert response.json()["detail"] == (
-            "Only customers can submit feedback."
+            "Customer access required."
         )
     finally:
         app.dependency_overrides.clear()

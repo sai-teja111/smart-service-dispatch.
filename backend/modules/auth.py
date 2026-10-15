@@ -50,6 +50,12 @@ def register_customer_user(data):
 # ============================================================
 
 def register_technician_user(data):
+    """
+    Register a technician with Pending approval status.
+
+    Submitted skills remain unverified until Admin reviews them.
+    """
+
     with get_session_context() as session:
         existing_technician = session.exec(
             select(Technician).where(
@@ -69,6 +75,7 @@ def register_technician_user(data):
             city=data.city,
             area=data.area,
             pincode=data.pincode,
+            approval_status="Pending",
         )
 
         session.add(technician)
@@ -94,12 +101,12 @@ def register_technician_user(data):
                 skill_id=skill.skill_id,
                 experience_years=skill_data.experience_years,
                 expertise_level=skill_data.expertise_level,
-                is_verified=True,
+                is_verified=False,
             )
 
             session.add(technician_skill)
 
-        # Save technician and skill associations together.
+        # Save the technician and skill associations together.
         session.commit()
         session.refresh(technician)
 
@@ -159,6 +166,10 @@ def authenticate_technician(phone, password):
             password,
             technician.password_hash,
         ):
+            return None
+
+        # Only Admin-approved technicians can log in.
+        if technician.approval_status != "Approved":
             return None
 
         # Determine whether this is the first tracked login.

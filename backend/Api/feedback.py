@@ -1,8 +1,9 @@
 from Log_config import log
 
-from  fastapi import APIRouter, Depends, HTTPException
-from  pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
+from Api.role_dependencies import require_customer
 from Api.dependencies import get_current_user
 
 from Api.schemas import (
@@ -55,9 +56,8 @@ class FeedbackCreate(BaseModel):
 )
 def create_feedback(
     data: FeedbackCreate,
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_customer)
 ):
-
     logger.info(
         "Create feedback attempt | "
         "customer_uuid: %s | request_uuid: %s | rating: %s",
@@ -66,23 +66,7 @@ def create_feedback(
         data.rating
     )
 
-    if current_user["role"] != "customer":
-
-        logger.warning(
-            "Create feedback denied | "
-            "user_uuid: %s | role: %s | request_uuid: %s",
-            current_user["user_uuid"],
-            current_user["role"],
-            data.request_uuid
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail="Only customers can submit feedback."
-        )
-
     try:
-
         feedback = create_feedback_service(
             customer_uuid=current_user["user_uuid"],
             request_uuid=data.request_uuid,
@@ -101,7 +85,6 @@ def create_feedback(
         return feedback
 
     except CustomerNotFoundError as error:
-
         logger.warning(
             "Feedback creation failed - customer not found | "
             "customer_uuid: %s | request_uuid: %s | reason: %s",
@@ -116,7 +99,6 @@ def create_feedback(
         )
 
     except ServiceRequestNotFoundError as error:
-
         logger.warning(
             "Feedback creation failed - service request not found | "
             "request_uuid: %s | reason: %s",
@@ -130,7 +112,6 @@ def create_feedback(
         )
 
     except UnauthorizedFeedbackError as error:
-
         logger.warning(
             "Unauthorized feedback attempt | "
             "customer_uuid: %s | request_uuid: %s | reason: %s",
@@ -145,7 +126,6 @@ def create_feedback(
         )
 
     except IncompleteServiceError as error:
-
         logger.warning(
             "Feedback rejected because service is incomplete | "
             "request_uuid: %s | reason: %s",
@@ -159,7 +139,6 @@ def create_feedback(
         )
 
     except NoTechnicianAssignedError as error:
-
         logger.warning(
             "Feedback rejected because no technician is assigned | "
             "request_uuid: %s | reason: %s",
@@ -173,7 +152,6 @@ def create_feedback(
         )
 
     except FeedbackAlreadyExistsError as error:
-
         logger.warning(
             "Duplicate feedback rejected | "
             "customer_uuid: %s | request_uuid: %s | reason: %s",
@@ -188,7 +166,6 @@ def create_feedback(
         )
 
     except TechnicianNotFoundError as error:
-
         logger.warning(
             "Feedback creation failed - technician not found | "
             "request_uuid: %s | reason: %s",
@@ -214,7 +191,6 @@ def view_feedback(
     request_uuid: str,
     current_user=Depends(get_current_user)
 ):
-
     logger.info(
         "View feedback attempt | "
         "user_uuid: %s | role: %s | request_uuid: %s",
@@ -224,7 +200,6 @@ def view_feedback(
     )
 
     try:
-
         feedback = get_feedback(
             user_uuid=current_user["user_uuid"],
             role=current_user["role"],
@@ -241,7 +216,6 @@ def view_feedback(
         return feedback
 
     except ServiceRequestNotFoundError as error:
-
         logger.warning(
             "Feedback retrieval failed - service request not found | "
             "request_uuid: %s | reason: %s",
@@ -255,7 +229,6 @@ def view_feedback(
         )
 
     except CustomerNotFoundError as error:
-
         logger.warning(
             "Feedback retrieval failed - customer not found | "
             "user_uuid: %s | request_uuid: %s | reason: %s",
@@ -270,7 +243,6 @@ def view_feedback(
         )
 
     except TechnicianNotFoundError as error:
-
         logger.warning(
             "Feedback retrieval failed - technician not found | "
             "user_uuid: %s | request_uuid: %s | reason: %s",
@@ -285,7 +257,6 @@ def view_feedback(
         )
 
     except UnauthorizedFeedbackError as error:
-
         logger.warning(
             "Unauthorized feedback access | "
             "user_uuid: %s | role: %s | request_uuid: %s | reason: %s",
@@ -301,7 +272,6 @@ def view_feedback(
         )
 
     except InvalidUserRoleError as error:
-
         logger.warning(
             "Invalid user role for feedback access | "
             "user_uuid: %s | role: %s | request_uuid: %s | reason: %s",

@@ -3,7 +3,7 @@ from Log_config import log
 from  fastapi import APIRouter, Depends, HTTPException
 from  pydantic import BaseModel, Field
 
-from Api.dependencies import get_current_user
+from Api.role_dependencies import require_technician
 
 from Api.schemas import (
     TechnicianAvailabilityUpdateResponse,
@@ -45,7 +45,7 @@ class AvailabilityUpdate(BaseModel):
 )
 def update_availability(
     data: AvailabilityUpdate,
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
 
     logger.info(
@@ -55,19 +55,7 @@ def update_availability(
         data.availability
     )
 
-    if current_user["role"] != "technician":
-
-        logger.warning(
-            "Update technician availability denied | "
-            "user_uuid: %s | role: %s",
-            current_user["user_uuid"],
-            current_user["role"]
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail="Only technicians can update availability."
-        )
+    
 
     try:
 
@@ -139,7 +127,7 @@ def update_availability(
     response_model=TechnicianAvailabilityResponse
 )
 def view_availability(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
 
     logger.info(
@@ -149,20 +137,7 @@ def view_availability(
         current_user["role"]
     )
 
-    if current_user["role"] != "technician":
-
-        logger.warning(
-            "View technician availability denied | "
-            "user_uuid: %s | role: %s",
-            current_user["user_uuid"],
-            current_user["role"]
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail="Only technicians can view their availability."
-        )
-
+    
     try:
 
         result = get_technician_availability(

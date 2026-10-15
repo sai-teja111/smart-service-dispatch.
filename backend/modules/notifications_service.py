@@ -12,6 +12,10 @@ from Orm.notifications import Notification
 logger = log()
 
 
+# ============================================================
+# GET AND VALIDATE AUTHENTICATED USER DETAILS
+# ============================================================
+
 def get_recipient_details(current_user):
     """Extract and validate the authenticated user's identity."""
 
@@ -21,6 +25,7 @@ def get_recipient_details(current_user):
             or current_user.get("user_uuid")
         )
         role = current_user.get("role")
+
     else:
         user_uuid = (
             getattr(current_user, "sub", None)
@@ -28,7 +33,10 @@ def get_recipient_details(current_user):
         )
         role = getattr(current_user, "role", None)
 
-    if not user_uuid or role not in {"customer", "technician"}:
+    if (
+        not user_uuid
+        or role not in {"customer", "technician"}
+    ):
         raise HTTPException(
             status_code=401,
             detail="Invalid authenticated user.",
@@ -36,6 +44,7 @@ def get_recipient_details(current_user):
 
     try:
         user_uuid = UUID(str(user_uuid))
+
     except (ValueError, TypeError, AttributeError):
         raise HTTPException(
             status_code=401,
@@ -45,7 +54,13 @@ def get_recipient_details(current_user):
     return user_uuid, role
 
 
-def serialize_notification(notification: Notification) -> dict:
+# ============================================================
+# SERIALIZE NOTIFICATION
+# ============================================================
+
+def serialize_notification(
+    notification: Notification
+) -> dict:
     """Convert a notification model into an API-friendly dictionary."""
 
     return {
@@ -59,6 +74,10 @@ def serialize_notification(notification: Notification) -> dict:
         "read_at": notification.read_at,
     }
 
+
+# ============================================================
+# GET AUTHENTICATED USER NOTIFICATIONS
+# ============================================================
 
 def get_notifications(current_user) -> dict:
     """Retrieve notifications belonging to the authenticated user."""
@@ -81,13 +100,18 @@ def get_notifications(current_user) -> dict:
                     Notification.recipient_uuid == recipient_uuid,
                     Notification.recipient_role == recipient_role,
                 )
-                .order_by(Notification.created_at.desc())
+                .order_by(
+                    Notification.created_at.desc()
+                )
             )
 
-            notifications = session.exec(statement).all()
+            notifications = session.exec(
+                statement
+            ).all()
 
             unread_count = sum(
-                1 for notification in notifications
+                1
+                for notification in notifications
                 if not notification.is_read
             )
 
@@ -106,16 +130,26 @@ def get_notifications(current_user) -> dict:
                 ],
             }
 
+    # Preserve intentional HTTP errors.
+    except HTTPException:
+        raise
+
+    # Convert unexpected database or processing errors to HTTP 500.
     except Exception:
         logger.exception(
             "Failed to fetch notifications | user_uuid: %s",
             recipient_uuid,
         )
+
         raise HTTPException(
             status_code=500,
             detail="Unable to fetch notifications.",
         )
 
+
+# ============================================================
+# MARK AUTHENTICATED USER NOTIFICATION AS READ
+# ============================================================
 
 def mark_notification_as_read(
     notification_uuid: UUID,
@@ -140,7 +174,9 @@ def mark_notification_as_read(
                 Notification.recipient_role == recipient_role,
             )
 
-            notification = session.exec(statement).first()
+            notification = session.exec(
+                statement
+            ).first()
 
             if notification is None:
                 raise HTTPException(
@@ -150,7 +186,9 @@ def mark_notification_as_read(
 
             if not notification.is_read:
                 notification.is_read = True
-                notification.read_at = datetime.now(timezone.utc)
+                notification.read_at = datetime.now(
+                    timezone.utc
+                )
 
                 session.add(notification)
                 session.commit()
@@ -163,7 +201,9 @@ def mark_notification_as_read(
 
             return {
                 "message": "Notification marked as read.",
-                "notification": serialize_notification(notification),
+                "notification": serialize_notification(
+                    notification
+                ),
             }
 
     except HTTPException:
@@ -171,13 +211,21 @@ def mark_notification_as_read(
 
     except Exception:
         logger.exception(
-            "Failed to mark notification as read | notification_uuid: %s",
+            "Failed to mark notification as read | "
+            "notification_uuid: %s",
             notification_uuid,
         )
+
         raise HTTPException(
             status_code=500,
             detail="Unable to update notification.",
         )
+
+
+# ============================================================
+# CREATE NOTIFICATION
+# ============================================================
+
 def create_notification(
     recipient_uuid: UUID,
     recipient_role: str,
@@ -189,7 +237,9 @@ def create_notification(
     """Create and persist a notification."""
 
     if recipient_role not in {"customer", "technician"}:
-        raise ValueError("Invalid notification recipient role.")
+        raise ValueError(
+            "Invalid notification recipient role."
+        )
 
     logger.info(
         "Creating notification | role: %s | user_uuid: %s | type: %s",
@@ -219,7 +269,8 @@ def create_notification(
 
     except Exception:
         logger.exception(
-            "Failed to create notification | role: %s | user_uuid: %s",
+            "Failed to create notification | "
+            "role: %s | user_uuid: %s",
             recipient_role,
             recipient_uuid,
         )

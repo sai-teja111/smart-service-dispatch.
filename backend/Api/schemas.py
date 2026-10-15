@@ -1,4 +1,3 @@
-
 from datetime import datetime
 from uuid import UUID
 from decimal import Decimal
@@ -78,6 +77,13 @@ class CustomerRegister(BaseModel):
         if value != value.strip():
             raise ValueError(
                 "Password must not contain leading or trailing spaces."
+            )
+
+        # bcrypt supports passwords up to 72 bytes.
+        # UTF-8 characters may occupy more than one byte.
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError(
+                "Password must not exceed 72 UTF-8 bytes."
             )
 
         if not any(char.isupper() for char in value):
@@ -265,6 +271,13 @@ class TechnicianRegister(BaseModel):
         if value != value.strip():
             raise ValueError(
                 "Password must not contain leading or trailing spaces."
+            )
+
+        # bcrypt supports passwords up to 72 bytes.
+        # UTF-8 characters may occupy more than one byte.
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError(
+                "Password must not exceed 72 UTF-8 bytes."
             )
 
         if not any(char.isupper() for char in value):

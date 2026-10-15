@@ -125,9 +125,7 @@ def test_update_availability_wrong_role():
     )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "Only technicians can update availability."
-    )
+    assert response.json()["detail"] == "Technician access required."
 
 
 # ============================================================
@@ -249,9 +247,7 @@ def test_view_availability_wrong_role():
     response = client.get("/technician/availability")
 
     assert response.status_code == 403
-    assert response.json()["detail"] == (
-        "Only technicians can view their availability."
-    )
+    assert response.json()["detail"] == "Technician access required."
 
 
 # ============================================================

@@ -4,11 +4,16 @@ from Log_config import log
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+
 from xml.sax.saxutils import escape
+
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import (
+    getSampleStyleSheet,
+    ParagraphStyle
+)
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -18,7 +23,10 @@ from reportlab.platypus import (
     TableStyle
 )
 
-from Api.dependencies import get_current_user
+from Api.role_dependencies import (
+    require_customer,
+    require_technician
+)
 
 from Api.schemas import (
     ReportsResponse,
@@ -49,35 +57,17 @@ router = APIRouter(
     response_model=ReportsResponse
 )
 def view_reports(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
-
     logger.info(
-        "View reports attempt | "
-        "user_uuid: %s | role: %s",
-        current_user["user_uuid"],
-        current_user["role"]
+        "View reports attempt | technician_uuid: %s",
+        current_user["user_uuid"]
     )
-
-    if current_user["role"] != "technician":
-
-        logger.warning(
-            "View reports denied | "
-            "user_uuid: %s | role: %s",
-            current_user["user_uuid"],
-            current_user["role"]
-        )
-
-        raise HTTPException(
-            status_code=403,
-            detail="Only technicians can view reports."
-        )
 
     reports = get_reports()
 
     logger.info(
-        "Reports retrieved successfully | "
-        "technician_uuid: %s",
+        "Reports retrieved successfully | technician_uuid: %s",
         current_user["user_uuid"]
     )
 
@@ -92,21 +82,12 @@ def view_reports(
     "/pdf"
 )
 def download_technician_reports_pdf(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_technician)
 ):
-
     logger.info(
-        "Technician PDF download attempt | "
-        "user_uuid: %s | role: %s",
-        current_user["user_uuid"],
-        current_user["role"]
+        "Technician PDF download attempt | technician_uuid: %s",
+        current_user["user_uuid"]
     )
-
-    if current_user["role"] != "technician":
-        raise HTTPException(
-            status_code=403,
-            detail="Only technicians can download reports."
-        )
 
     reports_data = get_reports()
 
@@ -138,16 +119,17 @@ def download_technician_reports_pdf(
         )
     ]
 
-    # Support both dictionary and Pydantic model responses.
+    # Support dictionary and Pydantic model responses.
     if hasattr(reports_data, "model_dump"):
         reports_data = reports_data.model_dump()
+
     elif not isinstance(reports_data, dict):
         reports_data = dict(reports_data)
 
     def add_section(section_title, section_data):
         story.append(
             Paragraph(
-                escape(section_title),
+                escape(str(section_title)),
                 styles["Heading2"]
             )
         )
@@ -159,6 +141,7 @@ def download_technician_reports_pdf(
             table_data = [["Metric", "Value"]]
 
             for key, value in section_data.items():
+
                 if isinstance(value, dict):
                     value = ", ".join(
                         f"{nested_key}: {nested_value}"
@@ -167,11 +150,19 @@ def download_technician_reports_pdf(
 
                 table_data.append([
                     Paragraph(
-                        escape(str(key.replace("_", " ").title())),
+                        escape(
+                            str(key.replace("_", " ").title())
+                        ),
                         styles["Normal"]
                     ),
                     Paragraph(
-                        escape(str(value if value is not None else "N/A")),
+                        escape(
+                            str(
+                                value
+                                if value is not None
+                                else "N/A"
+                            )
+                        ),
                         styles["Normal"]
                     )
                 ])
@@ -185,21 +176,66 @@ def download_technician_reports_pdf(
             table.setStyle(
                 TableStyle([
                     (
-                        "BACKGROUND", (0, 0), (-1, 0),
+                        "BACKGROUND",
+                        (0, 0),
+                        (-1, 0),
                         colors.HexColor("#1D4ED8")
                     ),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("GRID", (0, 0), (-1, -1), 0.5, colors.lightgrey),
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     (
-                        "BACKGROUND", (0, 1), (0, -1),
+                        "TEXTCOLOR",
+                        (0, 0),
+                        (-1, 0),
+                        colors.white
+                    ),
+                    (
+                        "FONTNAME",
+                        (0, 0),
+                        (-1, 0),
+                        "Helvetica-Bold"
+                    ),
+                    (
+                        "GRID",
+                        (0, 0),
+                        (-1, -1),
+                        0.5,
+                        colors.lightgrey
+                    ),
+                    (
+                        "VALIGN",
+                        (0, 0),
+                        (-1, -1),
+                        "TOP"
+                    ),
+                    (
+                        "BACKGROUND",
+                        (0, 1),
+                        (0, -1),
                         colors.HexColor("#EFF6FF")
                     ),
-                    ("LEFTPADDING", (0, 0), (-1, -1), 7),
-                    ("RIGHTPADDING", (0, 0), (-1, -1), 7),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6)
+                    (
+                        "LEFTPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        7
+                    ),
+                    (
+                        "RIGHTPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        7
+                    ),
+                    (
+                        "TOPPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        6
+                    ),
+                    (
+                        "BOTTOMPADDING",
+                        (0, 0),
+                        (-1, -1),
+                        6
+                    )
                 ])
             )
 
@@ -208,11 +244,15 @@ def download_technician_reports_pdf(
 
         elif isinstance(section_data, list):
             for item in section_data:
+
                 if hasattr(item, "model_dump"):
                     item = item.model_dump()
 
                 if isinstance(item, dict):
-                    add_section("Technician Details", item)
+                    add_section(
+                        "Technician Details",
+                        item
+                    )
 
     for section_name, section_data in reports_data.items():
         add_section(
@@ -225,7 +265,7 @@ def download_technician_reports_pdf(
     buffer.seek(0)
 
     logger.info(
-        "Technician PDF generated | user_uuid: %s",
+        "Technician PDF generated | technician_uuid: %s",
         current_user["user_uuid"]
     )
 
@@ -250,21 +290,12 @@ def download_technician_reports_pdf(
     response_model=CustomerReportsResponse
 )
 def view_customer_reports(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_customer)
 ):
-
     logger.info(
-        "Customer reports attempt | "
-        "user_uuid: %s | role: %s",
-        current_user["user_uuid"],
-        current_user["role"]
+        "Customer reports attempt | customer_uuid: %s",
+        current_user["user_uuid"]
     )
-
-    if current_user["role"] != "customer":
-        raise HTTPException(
-            status_code=403,
-            detail="Only customers can view customer reports."
-        )
 
     reports = get_customer_reports(
         current_user["user_uuid"]
@@ -277,8 +308,7 @@ def view_customer_reports(
         )
 
     logger.info(
-        "Customer reports retrieved | "
-        "user_uuid: %s | count: %s",
+        "Customer reports retrieved | customer_uuid: %s | count: %s",
         current_user["user_uuid"],
         reports["count"]
     )
@@ -294,21 +324,12 @@ def view_customer_reports(
     "/customer/pdf"
 )
 def download_customer_reports_pdf(
-    current_user=Depends(get_current_user)
+    current_user=Depends(require_customer)
 ):
-
     logger.info(
-        "Customer PDF download attempt | "
-        "user_uuid: %s | role: %s",
-        current_user["user_uuid"],
-        current_user["role"]
+        "Customer PDF download attempt | customer_uuid: %s",
+        current_user["user_uuid"]
     )
-
-    if current_user["role"] != "customer":
-        raise HTTPException(
-            status_code=403,
-            detail="Only customers can download customer reports."
-        )
 
     reports_data = get_customer_reports(
         current_user["user_uuid"]
@@ -357,7 +378,6 @@ def download_customer_reports_pdf(
         reports_data["reports"],
         start=1
     ):
-
         technician = report.get("technician")
 
         technician_name = (
@@ -373,27 +393,34 @@ def download_customer_reports_pdf(
                 "%d-%m-%Y %H:%M"
             )
 
-        # Escape user-provided text before inserting it into a PDF paragraph.
-        from xml.sax.saxutils import escape
-
         table_data = [
             ["Field", "Details"],
             ["Request", str(index)],
             ["Request ID", str(report["request_uuid"])],
-            ["Service", Paragraph(
-                escape(str(report["service"])),
-                styles["Normal"]
-            )],
-            ["Problem", Paragraph(
-                escape(str(report["problem_description"])),
-                styles["Normal"]
-            )],
-            ["Priority", str(
-                report["priority"] or "Not specified"
-            )],
+            [
+                "Service",
+                Paragraph(
+                    escape(str(report["service"])),
+                    styles["Normal"]
+                )
+            ],
+            [
+                "Problem",
+                Paragraph(
+                    escape(str(report["problem_description"])),
+                    styles["Normal"]
+                )
+            ],
+            [
+                "Priority",
+                str(report["priority"] or "Not specified")
+            ],
             ["Status", str(report["status"])],
             ["Request date", str(request_date)],
-            ["Technician", escape(str(technician_name))]
+            [
+                "Technician",
+                escape(str(technician_name))
+            ]
         ]
 
         table = Table(
@@ -476,8 +503,7 @@ def download_customer_reports_pdf(
     buffer.seek(0)
 
     logger.info(
-        "Customer PDF generated | "
-        "customer_uuid: %s | count: %s",
+        "Customer PDF generated | customer_uuid: %s | count: %s",
         current_user["user_uuid"],
         reports_data["count"]
     )
