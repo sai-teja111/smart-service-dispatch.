@@ -968,3 +968,58 @@ def find_best_technician(request_id):
         )
 
         return None
+
+def reassign_open_requests_for_skill(skill_id: int) -> dict:
+    """
+    Retry assignment for existing OPEN requests for a skill.
+
+    The existing find_best_technician() function remains
+    responsible for checking technician eligibility and
+    creating assignments.
+    """
+
+    if skill_id <= 0:
+        return {
+            "checked": 0,
+            "assigned": 0,
+        }
+
+    try:
+        with get_session_context() as session:
+            statement = (
+                select(ServiceRequest.request_id)
+                .where(
+                    ServiceRequest.skill_id == skill_id,
+                    ServiceRequest.status == "OPEN",
+                    ServiceRequest.assigned_technician_id.is_(None),
+                )
+                .order_by(ServiceRequest.request_date)
+            )
+
+            request_ids = session.exec(statement).all()
+
+        assigned_count = 0
+
+        # Use the existing matching function for every request.
+        # It opens its own session and commits successful assignments.
+        for request_id in request_ids:
+            technician_id = find_best_technician(request_id)
+
+            if technician_id is not None:
+                assigned_count += 1
+
+        return {
+            "checked": len(request_ids),
+            "assigned": assigned_count,
+        }
+
+    except Exception as err:
+        print(
+            f"\nAutomatic reassignment error for skill "
+            f"{skill_id}: {err}"
+        )
+
+        return {
+            "checked": 0,
+            "assigned": 0,
+        }

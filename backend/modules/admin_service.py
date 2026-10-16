@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -15,6 +16,8 @@ from Orm.technician import Technician
 from Orm.technician_skill import TechnicianSkill
 from Orm.skills import Skill
 from Orm.database import get_session_context
+
+from modules.matching import reassign_open_requests_for_skill
 
 
 # ============================================================
@@ -219,7 +222,9 @@ def get_customer_by_uuid(
             Customer.customer_uuid == validated_uuid
         )
 
-        customer = session.exec(statement).first()
+        customer = session.exec(
+            statement
+        ).first()
 
         if customer is None:
             raise HTTPException(
@@ -405,6 +410,9 @@ def update_technician_approval(
 
     Approval requires at least one verified skill.
     Rejection does not require skill verification.
+
+    When approval succeeds, retry existing OPEN requests
+    for the technician's verified skills.
     """
 
     normalized_status = str(approval_status).strip().title()
@@ -468,6 +476,22 @@ def update_technician_approval(
         session.add(technician)
         session.commit()
         session.refresh(technician)
+
+        # After approval, retry requests for verified skills.
+        # The matching function still checks availability,
+        # workload, approval, and skill verification.
+        if normalized_status == "Approved":
+            verified_skill_ids = session.exec(
+                select(TechnicianSkill.skill_id)
+                .where(
+                    TechnicianSkill.technician_id
+                    == technician.technician_id,
+                    TechnicianSkill.is_verified.is_(True),
+                )
+            ).all()
+
+            for skill_id in set(verified_skill_ids):
+                reassign_open_requests_for_skill(skill_id)
 
         return {
             "message": (
@@ -596,6 +620,9 @@ def update_technician_skill_verification(
     Verify a submitted skill or remove its verification.
 
     Only an Admin-protected API endpoint should call this function.
+
+    When a skill becomes verified for an approved technician,
+    retry existing OPEN requests for that skill.
     """
 
     if not isinstance(is_verified, bool):
@@ -669,6 +696,14 @@ def update_technician_skill_verification(
         session.commit()
         session.refresh(technician_skill)
 
+        # Retry matching only when the skill is verified
+        # and the technician account is already approved.
+        if (
+            is_verified
+            and technician.approval_status == "Approved"
+        ):
+            reassign_open_requests_for_skill(skill_id)
+
         return {
             "message": (
                 "Technician skill verified successfully."
@@ -690,6 +725,7 @@ def update_technician_skill_verification(
                 "is_verified": technician_skill.is_verified,
             },
         }
+
 
 # ============================================================
 # ADMIN REPORT: CUSTOMER REPORT

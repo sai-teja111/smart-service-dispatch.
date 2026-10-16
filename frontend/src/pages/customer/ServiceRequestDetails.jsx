@@ -1,3 +1,4 @@
+
 import {
     ArrowLeft,
     CalendarDays,
@@ -52,7 +53,7 @@ function formatStatus(status) {
 
 
 function getStatusStyles(status) {
-    switch (status) {
+    switch (status?.toUpperCase()) {
         case "OPEN":
             return "bg-blue-50 text-blue-700 border-blue-200";
 
@@ -65,6 +66,9 @@ function getStatusStyles(status) {
 
         case "COMPLETED":
             return "bg-emerald-50 text-emerald-700 border-emerald-200";
+
+        case "CANCELLED":
+            return "bg-red-50 text-red-700 border-red-200";
 
         default:
             return "bg-slate-50 text-slate-700 border-slate-200";
@@ -89,20 +93,28 @@ function getPriorityStyles(priority) {
 }
 
 
-function getProgressSteps(status) {
+function getProgressSteps(status, technician) {
     const normalizedStatus = status?.toUpperCase();
 
-    const completed =
-        normalizedStatus === "COMPLETED";
+    const hasTechnician = Boolean(technician);
+
+    const completed = normalizedStatus === "COMPLETED";
 
     const inProgress =
         normalizedStatus === "IN_PROGRESS" ||
         normalizedStatus === "IN PROGRESS";
 
-    const pending =
-        normalizedStatus === "PENDING";
+    const cancelled = normalizedStatus === "CANCELLED";
 
-    return [
+    // A technician is assigned when technician details are
+    // present in the API response. In-progress and completed
+    // requests also imply that assignment has already occurred.
+    const technicianAssigned =
+        hasTechnician ||
+        inProgress ||
+        completed;
+
+    const steps = [
         {
             title: "Request Created",
             description: "Your service request has been created.",
@@ -110,29 +122,37 @@ function getProgressSteps(status) {
         },
         {
             title: "Technician Assigned",
-            description: pending
-                ? "Waiting for technician assignment."
-                : "A suitable technician has been assigned.",
-            completed:
-                inProgress ||
-                completed ||
-                Boolean(status && status !== "OPEN" && status !== "PENDING"),
+            description: technicianAssigned
+                ? technician?.technician_name
+                    ? `Technician ${technician.technician_name} has been assigned.`
+                    : "A suitable technician has been assigned."
+                : "Waiting for technician assignment.",
+            completed: technicianAssigned,
         },
         {
             title: "Service In Progress",
             description: completed
                 ? "The technician completed the service."
                 : "The technician will work on your service request.",
-            completed:
-                inProgress ||
-                completed,
+            completed: inProgress || completed,
         },
         {
             title: "Service Completed",
             description: "Your service request has been completed.",
-            completed: completed,
+            completed,
         },
     ];
+
+    // A cancelled request should not display later stages as
+    // completed simply because its previous status was advanced.
+    if (cancelled) {
+        return steps.map((step, index) => ({
+            ...step,
+            completed: index === 0,
+        }));
+    }
+
+    return steps;
 }
 
 
@@ -194,9 +214,7 @@ function ServiceRequestDetails() {
     if (loading) {
         return (
             <div className="rounded-2xl border border-slate-200 bg-white p-10 shadow-sm">
-
                 <div className="flex min-h-70 flex-col items-center justify-center text-center">
-
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
                         <Loader2
                             size={24}
@@ -211,9 +229,7 @@ function ServiceRequestDetails() {
                     <p className="mt-1 text-sm text-slate-500">
                         Please wait while we retrieve the service request.
                     </p>
-
                 </div>
-
             </div>
         );
     }
@@ -222,9 +238,7 @@ function ServiceRequestDetails() {
     if (error) {
         return (
             <div className="rounded-2xl border border-red-200 bg-white p-8 shadow-sm">
-
                 <div className="flex min-h-70 flex-col items-center justify-center text-center">
-
                     <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
                         <ClipboardList size={24} />
                     </div>
@@ -245,9 +259,7 @@ function ServiceRequestDetails() {
                         <ArrowLeft size={18} />
                         Back to My Requests
                     </button>
-
                 </div>
-
             </div>
         );
     }
@@ -259,7 +271,8 @@ function ServiceRequestDetails() {
 
 
     const progressSteps = getProgressSteps(
-        request.status
+        request.status,
+        request.technician
     );
 
 
@@ -268,7 +281,6 @@ function ServiceRequestDetails() {
 
             {/* Header */}
             <div>
-
                 <Link
                     to="/customer/requests"
                     className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-blue-600"
@@ -278,9 +290,7 @@ function ServiceRequestDetails() {
                 </Link>
 
                 <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-
                     <div>
-
                         <p className="text-sm font-medium text-blue-600">
                             Customer Portal
                         </p>
@@ -292,11 +302,9 @@ function ServiceRequestDetails() {
                         <p className="mt-1 text-sm text-slate-500">
                             View the current status and details of your request.
                         </p>
-
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-
                         <span
                             className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${getStatusStyles(
                                 request.status
@@ -314,11 +322,8 @@ function ServiceRequestDetails() {
                                 {request.priority} Priority
                             </span>
                         )}
-
                     </div>
-
                 </div>
-
             </div>
 
 
@@ -329,117 +334,82 @@ function ServiceRequestDetails() {
                 <div className="space-y-6 lg:col-span-2">
 
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-
                         <div className="border-b border-slate-100 p-6">
-
                             <div className="flex items-start gap-4">
-
                                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                                     <ClipboardList size={23} />
                                 </div>
 
                                 <div className="min-w-0">
-
                                     <h2 className="text-xl font-bold text-slate-900">
                                         {request.service}
                                     </h2>
 
                                     <p className="mt-1 break-all text-xs text-slate-400">
-                                        Request ID:{" "}
-                                        {request.request_uuid}
+                                        Request ID: {request.request_uuid}
                                     </p>
-
                                 </div>
-
                             </div>
-
                         </div>
 
-
                         <div className="space-y-6 p-6">
-
                             <div>
-
                                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                                     Problem Description
                                 </p>
 
                                 <div className="mt-3 rounded-xl bg-slate-50 p-4">
-
                                     <p className="text-sm leading-6 text-slate-700">
                                         {request.problem_description}
                                     </p>
-
                                 </div>
-
                             </div>
 
-
                             <div className="grid gap-5 sm:grid-cols-2">
-
                                 <div className="flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                         <CalendarDays size={18} />
                                     </div>
 
                                     <div>
-
                                         <p className="text-xs text-slate-400">
                                             Requested On
                                         </p>
 
                                         <p className="mt-1 text-sm font-medium text-slate-700">
-                                            {formatDate(
-                                                request.request_date
-                                            )}
+                                            {formatDate(request.request_date)}
                                         </p>
-
                                     </div>
-
                                 </div>
 
-
                                 <div className="flex items-center gap-3">
-
                                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600">
                                         <Clock3 size={18} />
                                     </div>
 
                                     <div>
-
                                         <p className="text-xs text-slate-400">
                                             Current Status
                                         </p>
 
                                         <p className="mt-1 text-sm font-medium text-slate-700">
-                                            {formatStatus(
-                                                request.status
-                                            )}
+                                            {formatStatus(request.status)}
                                         </p>
-
                                     </div>
-
                                 </div>
-
                             </div>
-
                         </div>
-
                     </div>
 
 
                     {/* Technician */}
                     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
                         <div className="flex items-center gap-3">
-
                             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
                                 <UserRound size={21} />
                             </div>
 
                             <div>
-
                                 <h2 className="text-lg font-bold text-slate-900">
                                     Assigned Technician
                                 </h2>
@@ -447,26 +417,19 @@ function ServiceRequestDetails() {
                                 <p className="text-sm text-slate-500">
                                     Technician assigned to this request.
                                 </p>
-
                             </div>
-
                         </div>
 
-
                         {request.technician ? (
-
                             <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4">
-
                                 <div className="flex items-center gap-4">
-
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
+                                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-600 text-lg font-bold text-white">
                                         {request.technician.technician_name
                                             ?.charAt(0)
-                                            ?.toUpperCase()}
+                                            ?.toUpperCase() || "T"}
                                     </div>
 
                                     <div>
-
                                         <p className="font-semibold text-slate-900">
                                             {request.technician.technician_name}
                                         </p>
@@ -474,17 +437,11 @@ function ServiceRequestDetails() {
                                         <p className="mt-1 text-xs text-slate-400">
                                             Technician assigned to your service request
                                         </p>
-
                                     </div>
-
                                 </div>
-
                             </div>
-
                         ) : (
-
                             <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-4">
-
                                 <p className="text-sm font-semibold text-amber-800">
                                     Technician not assigned yet
                                 </p>
@@ -492,11 +449,8 @@ function ServiceRequestDetails() {
                                 <p className="mt-1 text-sm leading-6 text-amber-700">
                                     We are still looking for a suitable technician for your request.
                                 </p>
-
                             </div>
-
                         )}
-
                     </div>
 
                 </div>
@@ -504,9 +458,7 @@ function ServiceRequestDetails() {
 
                 {/* Progress */}
                 <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-
                     <div>
-
                         <h2 className="text-lg font-bold text-slate-900">
                             Service Progress
                         </h2>
@@ -514,77 +466,59 @@ function ServiceRequestDetails() {
                         <p className="mt-1 text-sm text-slate-500">
                             Track the progress of your request.
                         </p>
-
                     </div>
-
 
                     <div className="mt-7">
-
-                        {progressSteps.map(
-                            (step, index) => (
+                        {progressSteps.map((step, index) => (
+                            <div
+                                key={step.title}
+                                className="relative flex gap-4"
+                            >
+                                {index < progressSteps.length - 1 && (
+                                    <div
+                                        className={`absolute left-4 top-8 h-full w-px ${
+                                            step.completed &&
+                                            progressSteps[index + 1].completed
+                                                ? "bg-blue-500"
+                                                : "bg-slate-200"
+                                        }`}
+                                    />
+                                )}
 
                                 <div
-                                    key={step.title}
-                                    className="relative flex gap-4"
+                                    className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                                        step.completed
+                                            ? "border-blue-600 bg-blue-600 text-white"
+                                            : "border-slate-200 bg-white text-slate-400"
+                                    }`}
                                 >
-
-                                    {index <
-                                        progressSteps.length - 1 && (
-                                        <div
-                                            className={`absolute left-4 top-8 h-full w-px ${
-                                                progressSteps[
-                                                    index + 1
-                                                ].completed
-                                                    ? "bg-blue-500"
-                                                    : "bg-slate-200"
-                                            }`}
-                                        />
+                                    {step.completed ? (
+                                        <CheckCircle2 size={17} />
+                                    ) : (
+                                        <span className="text-xs font-semibold">
+                                            {index + 1}
+                                        </span>
                                     )}
+                                </div>
 
-
-                                    <div
-                                        className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${
+                                <div className="pb-8">
+                                    <p
+                                        className={`text-sm font-semibold ${
                                             step.completed
-                                                ? "border-blue-600 bg-blue-600 text-white"
-                                                : "border-slate-200 bg-white text-slate-400"
+                                                ? "text-slate-900"
+                                                : "text-slate-400"
                                         }`}
                                     >
-                                        {step.completed ? (
-                                            <CheckCircle2
-                                                size={17}
-                                            />
-                                        ) : (
-                                            <span className="text-xs font-semibold">
-                                                {index + 1}
-                                            </span>
-                                        )}
-                                    </div>
+                                        {step.title}
+                                    </p>
 
-
-                                    <div className="pb-8">
-
-                                        <p
-                                            className={`text-sm font-semibold ${
-                                                step.completed
-                                                    ? "text-slate-900"
-                                                    : "text-slate-400"
-                                            }`}
-                                        >
-                                            {step.title}
-                                        </p>
-
-                                        <p className="mt-1 text-xs leading-5 text-slate-500">
-                                            {step.description}
-                                        </p>
-
-                                    </div>
-
+                                    <p className="mt-1 text-xs leading-5 text-slate-500">
+                                        {step.description}
+                                    </p>
                                 </div>
-                            )
-                        )}
-
+                            </div>
+                        ))}
                     </div>
-
                 </div>
 
             </div>
