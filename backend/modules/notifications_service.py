@@ -1,3 +1,4 @@
+
 from datetime import datetime, timezone
 from uuid import UUID
 
@@ -7,6 +8,7 @@ from sqlmodel import select
 from Log_config import log
 from Orm.database import get_session_context
 from Orm.notifications import Notification
+from Orm.admin import Admin
 
 
 logger = log()
@@ -35,7 +37,7 @@ def get_recipient_details(current_user):
 
     if (
         not user_uuid
-        or role not in {"customer", "technician"}
+        or role not in {"customer", "technician", "admin"}
     ):
         raise HTTPException(
             status_code=401,
@@ -130,11 +132,9 @@ def get_notifications(current_user) -> dict:
                 ],
             }
 
-    # Preserve intentional HTTP errors.
     except HTTPException:
         raise
 
-    # Convert unexpected database or processing errors to HTTP 500.
     except Exception:
         logger.exception(
             "Failed to fetch notifications | user_uuid: %s",
@@ -236,10 +236,16 @@ def create_notification(
 ) -> None:
     """Create and persist a notification."""
 
-    if recipient_role not in {"customer", "technician"}:
+    if recipient_role not in {
+        "customer",
+        "technician",
+        "admin",
+    }:
         raise ValueError(
             "Invalid notification recipient role."
         )
+
+    recipient_uuid = UUID(str(recipient_uuid))
 
     logger.info(
         "Creating notification | role: %s | user_uuid: %s | type: %s",
@@ -261,6 +267,7 @@ def create_notification(
 
             session.add(notification)
             session.commit()
+            session.refresh(notification)
 
             logger.info(
                 "Notification created | notification_uuid: %s",
@@ -273,5 +280,69 @@ def create_notification(
             "role: %s | user_uuid: %s",
             recipient_role,
             recipient_uuid,
+        )
+        raise
+
+
+# ============================================================
+# NOTIFY ALL ACTIVE ADMINISTRATORS
+# ============================================================
+
+def notify_active_admins(
+    title: str,
+    message: str,
+    notification_type: str,
+    request_uuid: UUID | None = None,
+) -> int:
+    """
+    Send an in-app notification to every active administrator.
+
+    Returns the number of admin notifications created.
+
+    Raises an exception if notification delivery fails, allowing
+    the calling workflow to decide how to handle that failure.
+    """
+
+    try:
+        with get_session_context() as session:
+            statement = select(Admin).where(
+                Admin.is_active.is_(True)
+            )
+
+            admins = session.exec(statement).all()
+
+            # Copy UUIDs before closing this database session.
+            admin_uuids = [
+                admin.admin_uuid
+                for admin in admins
+            ]
+
+        created_count = 0
+
+        for admin_uuid in admin_uuids:
+            create_notification(
+                recipient_uuid=admin_uuid,
+                recipient_role="admin",
+                title=title,
+                message=message,
+                notification_type=notification_type,
+                request_uuid=request_uuid,
+            )
+
+            created_count += 1
+
+        logger.info(
+            "Admin notifications completed | "
+            "admins_notified: %s | type: %s",
+            created_count,
+            notification_type,
+        )
+
+        return created_count
+
+    except Exception:
+        logger.exception(
+            "Failed to notify active administrators | type: %s",
+            notification_type,
         )
         raise
