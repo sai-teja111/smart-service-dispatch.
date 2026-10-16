@@ -128,3 +128,21 @@ export async function updateTechnicianSkillVerification(
     );
     return response.data;
 }
+
+
+/* ============================================================
+   ADMIN NOTIFICATIONS
+   ============================================================ */
+
+export async function getAdminNotifications() {
+    const response = await adminApi.get("/notifications");
+    return response.data;
+}
+
+export async function markAdminNotificationAsRead(notificationUuid) {
+    const response = await adminApi.patch(
+        `/notifications/${notificationUuid}/read`
+    );
+
+    return response.data;
+}
