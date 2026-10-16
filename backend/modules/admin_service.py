@@ -18,6 +18,7 @@ from Orm.skills import Skill
 from Orm.database import get_session_context
 
 from modules.matching import reassign_open_requests_for_skill
+from modules.notifications_service import notify_active_admins
 
 
 # ============================================================
@@ -411,8 +412,9 @@ def update_technician_approval(
     Approval requires at least one verified skill.
     Rejection does not require skill verification.
 
-    When approval succeeds, retry existing OPEN requests
-    for the technician's verified skills.
+    After the status update commits, notify active administrators.
+    When approval succeeds, retry existing OPEN requests for the
+    technician's verified skills.
     """
 
     normalized_status = str(approval_status).strip().title()
@@ -476,6 +478,24 @@ def update_technician_approval(
         session.add(technician)
         session.commit()
         session.refresh(technician)
+
+        technician_name = technician.technician_name
+
+        # Notify active admins after the status has committed.
+        # Notification failures must not undo the status update.
+        try:
+            notify_active_admins(
+                title=f"Technician {normalized_status}",
+                message=(
+                    f"{technician_name} has been "
+                    f"{normalized_status.lower()}."
+                ),
+                notification_type="TECHNICIAN_APPROVAL",
+            )
+        except Exception:
+            # The notification service logs the failure.
+            # Preserve the successful approval/rejection.
+            pass
 
         # After approval, retry requests for verified skills.
         # The matching function still checks availability,
