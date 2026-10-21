@@ -349,13 +349,60 @@ def find_best_technician(request_id):
                 customer_area,
                 []
             )
+            # Strict location priority:
+            # 1. Same area
+            # 2. Configured nearby areas
+            # 3. Broader fallback
+            same_area_technicians = [
+                technician
+                for technician in technicians
+                if str(technician.area or "").strip().lower()
+                == customer_area
+                ]
+
+            nearby_area_technicians = [
+                technician
+                for technician in technicians
+                if (
+                    str(technician.area or "").strip().lower()
+                    in nearby_areas
+                    and str(technician.area or "").strip().lower()
+                    != customer_area
+                    )
+            ]
+
+            if same_area_technicians:
+                candidate_technicians = same_area_technicians
+                matching_stage = "Same Area"
+                print(
+                    "\nMatching Stage: Same Area. "
+                    "Selecting only from eligible technicians "
+                    "in the customer's area."
+                )
+
+            elif nearby_area_technicians:
+                candidate_technicians = nearby_area_technicians
+                matching_stage = "Nearby Area"
+                print(
+                    "\nMatching Stage: Nearby Area. "
+                    "No eligible same-area technician was found."
+                )
+
+            else:
+                candidate_technicians = technicians
+                matching_stage = "Broader Fallback"
+                print(
+                    "\nMatching Stage: Broader Fallback. "
+                    "No eligible same-area or configured "
+                    "nearby technician was found."
+                )
 
             best_technician = None
             best_score = -1
             best_details = None
             best_technician_skill = None
 
-            for technician in technicians:
+            for technician in candidate_technicians:
 
                 technician_id = (
                     technician.technician_id
