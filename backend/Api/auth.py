@@ -166,6 +166,7 @@ def login_customer(data: LoginRequest):
     }
 
 
+
 # ============================================================
 # TECHNICIAN LOGIN
 # ============================================================
@@ -195,6 +196,45 @@ def login_technician(data: LoginRequest):
         raise HTTPException(
             status_code=401,
             detail="Invalid phone number or password."
+        )
+
+    # Handle pending and rejected accounts before unpacking.
+    # These accounts must never receive an access token.
+    if isinstance(authentication_result, dict):
+        account_status = authentication_result.get("status")
+
+        if account_status == "pending":
+            logger.info(
+                "Technician login blocked: approval pending | phone: %s",
+                data.phone
+            )
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Your technician account is waiting for "
+                    "admin approval. You can log in after "
+                    "your account has been approved."
+                )
+            )
+
+        if account_status == "rejected":
+            logger.info(
+                "Technician login blocked: account rejected | phone: %s",
+                data.phone
+            )
+
+            raise HTTPException(
+                status_code=403,
+                detail=(
+                    "Your technician account has been rejected. "
+                    "Please contact the administrator."
+                )
+            )
+
+        raise HTTPException(
+            status_code=403,
+            detail="Your technician account is not approved."
         )
 
     technician, first_login = authentication_result

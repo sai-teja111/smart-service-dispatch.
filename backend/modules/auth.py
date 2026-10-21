@@ -11,6 +11,8 @@ from Orm.skills import Skill
 
 from Api.security import hash_password, verify_password
 
+from modules.notifications_service import notify_active_admins
+
 
 # ============================================================
 # CUSTOMER REGISTRATION
@@ -54,6 +56,7 @@ def register_technician_user(data):
     Register a technician with Pending approval status.
 
     Submitted skills remain unverified until Admin reviews them.
+    Notify active administrators after registration commits.
     """
 
     with get_session_context() as session:
@@ -110,7 +113,26 @@ def register_technician_user(data):
         session.commit()
         session.refresh(technician)
 
-        return technician
+        # Capture the name while the registration session is open.
+        technician_name = technician.technician_name
+
+    # Notify admins only after the registration transaction commits.
+    # A notification failure must not undo a successful registration.
+    try:
+        notify_active_admins(
+            title="New Technician Registration",
+            message=(
+                f"{technician_name} registered and is awaiting "
+                "admin approval and skill verification."
+            ),
+            notification_type="TECHNICIAN_REGISTRATION",
+        )
+    except Exception:
+        # The notification service logs the failure.
+        # Keep registration successful if notification delivery fails.
+        pass
+
+    return technician
 
 
 # ============================================================
@@ -168,9 +190,22 @@ def authenticate_technician(phone, password):
         ):
             return None
 
-        # Only Admin-approved technicians can log in.
+        # Return the account status separately so the API can
+        # show the correct message without issuing a token.
+        if technician.approval_status == "Pending":
+            return {
+                "status": "pending",
+            }
+
+        if technician.approval_status == "Rejected":
+            return {
+                "status": "rejected",
+            }
+
         if technician.approval_status != "Approved":
-            return None
+            return {
+                "status": "pending",
+            }
 
         # Determine whether this is the first tracked login.
         first_login = technician.last_login_at is None
